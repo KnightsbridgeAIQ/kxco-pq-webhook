@@ -208,3 +208,163 @@ test('verifier accepts fetch-style Headers as input', () => {
   const r = verifier.verify(fetchHeaders, '{"a":1}')
   assert.equal(r.ok, true)
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// pinnedKids[] — multi-kid acceptance during rotation windows (0.3.0)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A second keypair representing the "old" key still being accepted during a
+// rotation window. KP / KID above stand in as the new (active) key.
+const KP_OLD  = mlDsa.keypairFromMaster(Buffer.from('11'.repeat(32), 'hex'), 'kxco-webhook-test-old-v1')
+const KID_OLD = fingerprint(KP_OLD.publicKey)
+
+test('pinnedKids: rejects when pinnedKids combined with pinnedKid/pqPublicKey', () => {
+  assert.throws(
+    () => createVerifier({
+      pqPublicKey: KP.publicKey, pinnedKid: KID,
+      pinnedKids: [{ kid: KID_OLD, publicKey: KP_OLD.publicKey }],
+      required: 'pq',
+    }),
+    /mutually exclusive/,
+  )
+})
+
+test('pinnedKids: rejects empty array', () => {
+  assert.throws(
+    () => createVerifier({ pinnedKids: [], required: 'pq' }),
+    /non-empty array/,
+  )
+})
+
+test('pinnedKids: rejects malformed entries', () => {
+  assert.throws(
+    () => createVerifier({ pinnedKids: [{ kid: KID }], required: 'pq' }),
+    /each pinnedKids entry must be/,
+  )
+  assert.throws(
+    () => createVerifier({ pinnedKids: [{ kid: KID, publicKey: 'not-hex' }], required: 'pq' }),
+    /must be \d+ chars/,
+  )
+})
+
+test('pinnedKids: rejects duplicate kids in the set', () => {
+  assert.throws(
+    () => createVerifier({
+      pinnedKids: [
+        { kid: KID, publicKey: KP.publicKey },
+        { kid: KID, publicKey: KP.publicKey },
+      ],
+      required: 'pq',
+    }),
+    /duplicate kid/,
+  )
+})
+
+test('pinnedKids: verifies a delivery signed by the NEW (first) kid', () => {
+  const signer   = createSigner({ pqSecretKey: KP.secretKey, pqKid: KID })
+  const headers  = signer.sign('{"x":1}')
+  const verifier = createVerifier({
+    pinnedKids: [
+      { kid: KID,     publicKey: KP.publicKey },
+      { kid: KID_OLD, publicKey: KP_OLD.publicKey },
+    ],
+    required: 'pq',
+  })
+  const r = verifier.verify(headers, '{"x":1}')
+  assert.equal(r.ok, true)
+  assert.equal(r.pqOk, true)
+  assert.equal(r.kidOk, true)
+  assert.equal(r.resolvedKid, KID)
+})
+
+test('pinnedKids: verifies a delivery signed by the OLD (second) kid', () => {
+  const signer   = createSigner({ pqSecretKey: KP_OLD.secretKey, pqKid: KID_OLD })
+  const headers  = signer.sign('{"x":1}')
+  const verifier = createVerifier({
+    pinnedKids: [
+      { kid: KID,     publicKey: KP.publicKey },
+      { kid: KID_OLD, publicKey: KP_OLD.publicKey },
+    ],
+    required: 'pq',
+  })
+  const r = verifier.verify(headers, '{"x":1}')
+  assert.equal(r.ok, true)
+  assert.equal(r.pqOk, true)
+  assert.equal(r.kidOk, true)
+  assert.equal(r.resolvedKid, KID_OLD)
+})
+
+test('pinnedKids: rejects a delivery whose kid is in NEITHER pinned entry', () => {
+  // Sign with a third, unknown key
+  const KP_UNKNOWN  = mlDsa.keypairFromMaster(Buffer.from('22'.repeat(32), 'hex'), 'kxco-webhook-test-unknown-v1')
+  const KID_UNKNOWN = fingerprint(KP_UNKNOWN.publicKey)
+  const signer     = createSigner({ pqSecretKey: KP_UNKNOWN.secretKey, pqKid: KID_UNKNOWN })
+  const headers    = signer.sign('{"x":1}')
+  const verifier   = createVerifier({
+    pinnedKids: [
+      { kid: KID,     publicKey: KP.publicKey },
+      { kid: KID_OLD, publicKey: KP_OLD.publicKey },
+    ],
+    required: 'pq',
+  })
+  const r = verifier.verify(headers, '{"x":1}')
+  assert.equal(r.ok, false)
+  assert.equal(r.reason, 'kid_mismatch')
+  assert.equal(r.kidOk, false)
+  assert.equal(r.resolvedKid, undefined)
+})
+
+test('pinnedKids: rejects a tampered body signed by a known kid', () => {
+  const signer   = createSigner({ pqSecretKey: KP.secretKey, pqKid: KID })
+  const headers  = signer.sign('{"x":1}')
+  const verifier = createVerifier({
+    pinnedKids: [
+      { kid: KID,     publicKey: KP.publicKey },
+      { kid: KID_OLD, publicKey: KP_OLD.publicKey },
+    ],
+    required: 'pq',
+  })
+  const r = verifier.verify(headers, '{"x":2}')   // tampered
+  assert.equal(r.ok, false)
+  assert.equal(r.reason, 'pq_invalid')
+  assert.equal(r.kidOk, true)                     // kid matched
+  assert.equal(r.resolvedKid, KID)
+})
+
+test('pinnedKids: works with hex-string publicKey entries', () => {
+  const signer    = createSigner({ pqSecretKey: KP.secretKey, pqKid: KID })
+  const headers   = signer.sign('{"x":1}')
+  const pubKeyHex = Buffer.from(KP.publicKey).toString('hex')
+  const verifier  = createVerifier({
+    pinnedKids: [{ kid: KID, publicKey: pubKeyHex }],
+    required: 'pq',
+  })
+  const r = verifier.verify(headers, '{"x":1}')
+  assert.equal(r.ok, true)
+  assert.equal(r.resolvedKid, KID)
+})
+
+test('pinnedKids: required="both" — HMAC + multi-kid PQ both pass', () => {
+  const signer   = createSigner({ hmacSecret: HMAC, pqSecretKey: KP_OLD.secretKey, pqKid: KID_OLD })
+  const headers  = signer.sign('{"x":1}')
+  const verifier = createVerifier({
+    hmacSecret: HMAC,
+    pinnedKids: [
+      { kid: KID,     publicKey: KP.publicKey },
+      { kid: KID_OLD, publicKey: KP_OLD.publicKey },
+    ],
+    required: 'both',
+  })
+  const r = verifier.verify(headers, '{"x":1}')
+  assert.equal(r.ok, true)
+  assert.equal(r.resolvedKid, KID_OLD)
+})
+
+test('pinnedKids: singular pinnedKid form still works unchanged (backward-compat)', () => {
+  const signer   = createSigner({ pqSecretKey: KP.secretKey, pqKid: KID })
+  const headers  = signer.sign('{"x":1}')
+  const verifier = createVerifier({ pqPublicKey: KP.publicKey, pinnedKid: KID, required: 'pq' })
+  const r = verifier.verify(headers, '{"x":1}')
+  assert.equal(r.ok, true)
+  assert.equal(r.resolvedKid, undefined)          // singular form never sets resolvedKid
+})

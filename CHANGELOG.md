@@ -4,6 +4,70 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-05-22
+
+Phase 5 of the kxco-post-quantum evolution brief. Adds operational
+support for **key rotation** under the existing wire contract. Additive:
+zero behaviour change for 0.2.0 callers who don't use the new API.
+
+### Added
+- **`createVerifier({ pinnedKids: [...] })`** — accept an array of
+  `{ kid, publicKey }` entries instead of a single `pinnedKid`. The
+  verifier resolves the incoming `X-KXCO-PQ-Kid` against the keystore
+  and selects the matching pubkey. `kid_mismatch` is returned (same
+  reason code as the singular case) when the header kid is in neither
+  entry. `pinnedKid` (singular) continues to work unchanged and is
+  mutually exclusive with `pinnedKids`.
+- **`resolvedKid`** field on `VerifyResult` when `pinnedKids[]` matched
+  successfully — tells the caller which key was used for this delivery.
+  Useful for logging/metrics during rotation windows.
+- **`docs/webhook-contract.md`** §"Key rotation and history" — defines
+  the multi-kid `.well-known/kxco-pq-pubkey` schema, the rotation
+  manifest format (RFC 8785 JCS canonical, signed by outgoing key),
+  and verifier semantics for `pinnedKids[]`. Language-neutral; receivers
+  in Rust/Go/Python can implement against this spec.
+- **`docs/key-rotation-playbook.md`** — operational playbook for
+  routine + compromise rotation. Covers prereqs, the cutover sequence,
+  drain windows, and the (interim) out-of-band approach for compromise
+  scenarios pending revocation-manifest spec work.
+
+### Tests + coverage
+- 89 tests total (was 78 in 0.2.0). 11 new `pinnedKids[]` cases covering
+  argument validation, single-kid signing → multi-kid acceptance for
+  both old + new keys, kid not in pin set, tampered body with valid kid,
+  hex-string pubkey entries, `required: 'both'` with multi-kid PQ, and
+  backward compatibility of the singular `pinnedKid` form.
+
+### Companion package: `kxco-pq-cli@0.1.0`
+- New separate npm package exposing `kxco-pq` binary for ops/CI use.
+- Commands: `keygen`, `fingerprint`, `rotate`. The `rotate` command
+  produces a signed manifest + multi-kid well-known doc ready to publish.
+- Includes a subset of RFC 8785 JCS canonicalization sufficient for
+  the rotation-manifest schema (strings/arrays/objects/integers; throws
+  on floats so a future schema change is caught early rather than
+  silently producing language-incompatible signatures).
+
+### Wire format
+- The base envelope (`${ts}.${rawBody}`), HMAC + ML-DSA-65 signature
+  prefixes, and `X-KXCO-PQ-Kid` semantics are unchanged. Receivers on
+  0.2.0 continue to verify deliveries from 0.3.0 senders that haven't
+  rotated — the multi-kid path is opt-in for both sides.
+
+### Out of scope (documented)
+- **Verifier auto-refresh** of the well-known endpoint. Deferred to
+  0.4.0 — the manual `pinnedKids[]` path is exercised in production
+  first, then auto-refresh adds the trust-path mitigations on top.
+- **Revocation manifests** for compromise rotation. The current spec
+  bridges trust from old kid to new kid via the old key's signature,
+  which assumes the old key is still trustworthy. A compromise event
+  needs a different trust path; see playbook §3.
+
+### Compatibility notes
+- 0.3.0 is a minor bump because no existing API changed. Singular
+  `pinnedKid` + `pqPublicKey` callers see zero behaviour change.
+- The new `kxco-pq-cli` is a separate package (`npm install -g kxco-pq-cli`)
+  and is not required to use the multi-kid verifier path.
+
 ## [0.2.0] — 2026-05-22
 
 Phase 3 of the kxco-post-quantum evolution brief, scoped to Option A

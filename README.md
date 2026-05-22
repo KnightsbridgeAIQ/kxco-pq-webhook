@@ -261,6 +261,43 @@ Response signing requires the full body to compute the envelope. **Don't mount t
 
 ---
 
+## Key rotation (new in 0.3.0)
+
+A verifier can accept multiple kids during a rotation window — useful when the publisher cuts over to a new key but receivers may still hold in-flight deliveries signed by the old one.
+
+```js
+import { createVerifier } from 'kxco-post-quantum-webhook'
+
+const verifier = createVerifier({
+  pinnedKids: [
+    { kid: '<new-kid>', publicKey: '<new-pubkey-hex>' },   // active
+    { kid: '<old-kid>', publicKey: '<old-pubkey-hex>' }    // retiring
+  ],
+  required: 'pq',
+})
+
+const r = verifier.verify(req.headers, req.body)
+//  → { ok: true, resolvedKid: '<which kid was used for this delivery>', ... }
+```
+
+`pinnedKid` (singular) continues to work unchanged and is mutually exclusive with `pinnedKids`. Use the singular form when you don't yet hold rotation history; upgrade to the multi-kid form **before** the publisher rotates.
+
+For the operator side — generating new keypairs, building signed rotation manifests, publishing the multi-kid `.well-known/kxco-pq-pubkey` doc — use the companion CLI:
+
+```bash
+npx kxco-pq rotate \
+  --old-secret @./current-keys/secret-key.hex \
+  --old-kid    <current-kid> \
+  --new-master <fresh-32-byte-master-hex> \
+  --info       'my-publisher-v2' \
+  --issuer     'publisher.example.com' \
+  --out-dir    ./rotated
+```
+
+Full sequence (notify receivers → publish well-known + manifest → cut over signer → drain window → retire old kid) is in [`docs/key-rotation-playbook.md`](./docs/key-rotation-playbook.md). The wire-format spec for the multi-kid `.well-known` and the rotation manifest is in [`docs/webhook-contract.md`](./docs/webhook-contract.md#key-rotation-and-history) — language-neutral, so receivers in Rust/Go/Python can implement the same flow.
+
+---
+
 ## Non-goals
 
 This package will deliberately not grow into the following. Each was considered and rejected with explicit reasoning:
@@ -280,5 +317,6 @@ If you need any of the above, build it as a separate package on top of this one.
 ## See also
 
 - [`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum) — primitives (ML-DSA-65, ML-KEM-768, HMAC envelope)
+- [`kxco-pq-cli`](https://www.npmjs.com/package/kxco-pq-cli) — `kxco-pq` binary for keygen / fingerprint / signed rotation manifests
 - [`kxco-verify`](https://www.npmjs.com/package/kxco-verify) — browser-safe verifier for deploy attestations + webhook deliveries
 - [`verify.kxco.ai`](https://verify.kxco.ai) — paste-URL verifier for the deploy-attestation flow (related but distinct from the webhook flow)

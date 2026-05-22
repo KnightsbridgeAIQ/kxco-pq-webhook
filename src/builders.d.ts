@@ -18,10 +18,16 @@ export function createSigner(opts: SignerOpts): Signer
 
 export type RequiredPolicy = 'hmac' | 'pq' | 'both' | 'either'
 
+export interface PinnedKidEntry {
+  kid: string
+  publicKey: Buffer | Uint8Array | string
+}
+
 export interface VerifierOpts {
   hmacSecret?: string | Buffer
   pqPublicKey?: Buffer | Uint8Array | string
   pinnedKid?: string
+  pinnedKids?: PinnedKidEntry[]
   windowSeconds?: number
   required?: RequiredPolicy
 }
@@ -33,6 +39,7 @@ export interface VerifyResult {
   timestampOk: boolean
   kidOk: boolean
   reason?: 'missing_pq' | 'missing_hmac' | 'timestamp_skew' | 'kid_mismatch' | 'hmac_invalid' | 'pq_invalid'
+  resolvedKid?: string
 }
 
 export interface Verifier {

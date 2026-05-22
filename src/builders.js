@@ -85,10 +85,15 @@ export function createSigner(opts) {
 /**
  * @typedef {'hmac'|'pq'|'both'|'either'} RequiredPolicy
  *
+ * @typedef {Object} PinnedKidEntry
+ * @property {string}                   kid       — 16 hex chars
+ * @property {Buffer|Uint8Array|string} publicKey — raw 1952-byte ML-DSA-65 pubkey or hex string
+ *
  * @typedef {Object} VerifierOpts
  * @property {string|Buffer}     [hmacSecret]   — shared HMAC-SHA-256 secret
  * @property {Buffer|Uint8Array|string} [pqPublicKey] — raw ML-DSA-65 public key (1952 bytes) or hex string
  * @property {string}            [pinnedKid]    — required iff pqPublicKey; rejects deliveries with a different kid header
+ * @property {PinnedKidEntry[]}  [pinnedKids]   — accept any kid in this set; mutually exclusive with pinnedKid/pqPublicKey
  * @property {number}            [windowSeconds=300] — max acceptable clock skew on X-KXCO-Timestamp
  * @property {RequiredPolicy}    [required='both']   — what counts as "verified": hmac only / pq only / both / either
  *
@@ -99,6 +104,7 @@ export function createSigner(opts) {
  * @property {boolean} timestampOk   — X-KXCO-Timestamp within windowSeconds of now
  * @property {boolean} kidOk         — X-KXCO-PQ-Kid header matched pinnedKid (true when no pubkey is configured)
  * @property {string=} reason        — when !ok, a short reason code: missing_pq | missing_hmac | timestamp_skew | kid_mismatch | hmac_invalid | pq_invalid
+ * @property {string=} resolvedKid   — when pinnedKids[] is used and matched: the kid that was selected for verification
  *
  * @typedef {Object} Verifier
  * @property {(headers: Record<string,string|undefined>, rawBody: string|Buffer) => VerifyResult} verify
@@ -119,6 +125,7 @@ export function createVerifier(opts) {
     hmacSecret,
     pqPublicKey,
     pinnedKid,
+    pinnedKids,
     windowSeconds = 300,
     required = 'both',
   } = opts
@@ -126,8 +133,12 @@ export function createVerifier(opts) {
   if (!['hmac', 'pq', 'both', 'either'].includes(required)) {
     throw new TypeError(`createVerifier: required must be one of 'hmac' | 'pq' | 'both' | 'either' (got ${JSON.stringify(required)})`)
   }
-  if (!hmacSecret && !pqPublicKey) {
-    throw new TypeError('createVerifier: at least one of { hmacSecret, pqPublicKey } is required')
+  if (pinnedKids && (pinnedKid || pqPublicKey)) {
+    throw new TypeError('createVerifier: pinnedKids is mutually exclusive with pinnedKid/pqPublicKey — pick one shape')
+  }
+  const hasPqConfig = !!(pqPublicKey || pinnedKids)
+  if (!hmacSecret && !hasPqConfig) {
+    throw new TypeError('createVerifier: at least one of { hmacSecret, pqPublicKey, pinnedKids } is required')
   }
   if (pqPublicKey && !pinnedKid) {
     throw new TypeError('createVerifier: pinnedKid is required when pqPublicKey is provided')
@@ -135,50 +146,95 @@ export function createVerifier(opts) {
   if (required === 'hmac' && !hmacSecret) {
     throw new TypeError('createVerifier: required="hmac" but no hmacSecret provided')
   }
-  if (required === 'pq' && !pqPublicKey) {
-    throw new TypeError('createVerifier: required="pq" but no pqPublicKey provided')
+  if (required === 'pq' && !hasPqConfig) {
+    throw new TypeError('createVerifier: required="pq" but no pqPublicKey/pinnedKids provided')
   }
-  if (required === 'both' && (!hmacSecret || !pqPublicKey)) {
-    throw new TypeError('createVerifier: required="both" needs both hmacSecret AND pqPublicKey')
+  if (required === 'both' && (!hmacSecret || !hasPqConfig)) {
+    throw new TypeError('createVerifier: required="both" needs hmacSecret AND a PQ key configuration')
   }
   if (typeof windowSeconds !== 'number' || windowSeconds < 0) {
     throw new TypeError('createVerifier: windowSeconds must be a non-negative number')
   }
 
-  // Normalise pubkey: accept hex string OR raw bytes; verifyDelivery wants bytes.
-  let pqPublicKeyBytes
-  if (pqPublicKey) {
-    if (typeof pqPublicKey === 'string') {
-      if (!/^[0-9a-f]+$/i.test(pqPublicKey) || pqPublicKey.length !== ML_DSA_65_PUBKEY_BYTES * 2) {
-        throw new TypeError(`createVerifier: pqPublicKey hex must be ${ML_DSA_65_PUBKEY_BYTES * 2} chars (got ${pqPublicKey.length})`)
-      }
-      pqPublicKeyBytes = Buffer.from(pqPublicKey, 'hex')
-    } else if (pqPublicKey instanceof Uint8Array || Buffer.isBuffer(pqPublicKey)) {
-      if (pqPublicKey.length !== ML_DSA_65_PUBKEY_BYTES) {
-        throw new TypeError(`createVerifier: pqPublicKey must be ${ML_DSA_65_PUBKEY_BYTES} bytes (got ${pqPublicKey.length})`)
-      }
-      pqPublicKeyBytes = pqPublicKey
-    } else {
-      throw new TypeError('createVerifier: pqPublicKey must be a hex string, Buffer, or Uint8Array')
+  // Normalise the single-key form.
+  const pqPublicKeyBytes = pqPublicKey ? normalisePubKey_(pqPublicKey, 'pqPublicKey') : undefined
+
+  // Build the multi-key keystore if pinnedKids[] was provided. Map<kid, bytes>.
+  let pqKeystore
+  let firstKidEntry
+  if (pinnedKids) {
+    if (!Array.isArray(pinnedKids) || pinnedKids.length === 0) {
+      throw new TypeError('createVerifier: pinnedKids must be a non-empty array')
     }
+    pqKeystore = new Map()
+    for (const entry of pinnedKids) {
+      if (!entry || typeof entry !== 'object' || typeof entry.kid !== 'string' || !entry.publicKey) {
+        throw new TypeError('createVerifier: each pinnedKids entry must be { kid: string, publicKey: hex|Buffer|Uint8Array }')
+      }
+      if (pqKeystore.has(entry.kid)) {
+        throw new TypeError(`createVerifier: pinnedKids contains duplicate kid ${entry.kid}`)
+      }
+      pqKeystore.set(entry.kid, normalisePubKey_(entry.publicKey, `pinnedKids[${entry.kid}].publicKey`))
+    }
+    firstKidEntry = { kid: pinnedKids[0].kid, bytes: pqKeystore.get(pinnedKids[0].kid) }
   }
 
   return {
     required,
     verify(headers, rawBody) {
       const lower = normaliseHeaders_(headers)
+
+      // Resolve which PQ key (if any) to verify against this delivery.
+      let effPubKey   = pqPublicKeyBytes
+      let effPinned   = pinnedKid
+      let resolvedKid
+      if (pqKeystore) {
+        const headerKid = lower['x-kxco-pq-kid']
+        const match     = headerKid && pqKeystore.get(headerKid)
+        if (match) {
+          effPubKey   = match
+          effPinned   = headerKid
+          resolvedKid = headerKid
+        } else {
+          // No match — verifyDelivery still runs but with a pinnedKid that
+          // won't match the header, so kidOk=false and policy returns
+          // kid_mismatch. Use the first entry just to give verifyDelivery
+          // a valid pubkey to call into (it won't be the one that matches).
+          effPubKey = firstKidEntry.bytes
+          effPinned = firstKidEntry.kid
+        }
+      }
+
       const r = verifyDelivery({
         headers:      lower,
         rawBody,
         hmacSecret,
-        pqPublicKey:  pqPublicKeyBytes,
-        pinnedKid,
+        pqPublicKey:  effPubKey,
+        pinnedKid:    effPinned,
         windowSeconds,
       })
       const verdict = applyPolicy_(r, required, lower)
-      return { ...r, ...verdict }
+      const out = { ...r, ...verdict }
+      if (resolvedKid) out.resolvedKid = resolvedKid
+      return out
     },
   }
+}
+
+function normalisePubKey_(pubKey, fieldName) {
+  if (typeof pubKey === 'string') {
+    if (!/^[0-9a-f]+$/i.test(pubKey) || pubKey.length !== ML_DSA_65_PUBKEY_BYTES * 2) {
+      throw new TypeError(`createVerifier: ${fieldName} hex must be ${ML_DSA_65_PUBKEY_BYTES * 2} chars (got ${pubKey.length})`)
+    }
+    return Buffer.from(pubKey, 'hex')
+  }
+  if (pubKey instanceof Uint8Array || Buffer.isBuffer(pubKey)) {
+    if (pubKey.length !== ML_DSA_65_PUBKEY_BYTES) {
+      throw new TypeError(`createVerifier: ${fieldName} must be ${ML_DSA_65_PUBKEY_BYTES} bytes (got ${pubKey.length})`)
+    }
+    return pubKey
+  }
+  throw new TypeError(`createVerifier: ${fieldName} must be a hex string, Buffer, or Uint8Array`)
 }
 
 function applyPolicy_(r, required, headers) {
