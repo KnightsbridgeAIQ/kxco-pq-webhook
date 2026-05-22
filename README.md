@@ -202,6 +202,81 @@ Apache 2.0 — see [LICENSE](./LICENSE). The upstream signer ([`kxco-post-quantu
 
 ---
 
+## Response signing (new in 0.2.0)
+
+Same wire format as webhook signing, applied to outbound API responses. A receiver verifying webhooks from your platform can verify your API responses with **zero additional code**. The headers, kid, envelope (`${ts}.${body}`), and `required` policy are all identical.
+
+### Sign API responses (per-framework)
+
+```js
+// Express
+import { createSigner }       from 'kxco-post-quantum-webhook'
+import { pqResponseSigner }   from 'kxco-post-quantum-webhook/express'
+
+const signer = createSigner({ pqSecretKey: kp.secretKey, pqKid: kid })
+
+app.post('/api/order',
+  pqResponseSigner({ signer }),       // mount per-route, opt-in
+  (req, res) => res.json({ orderId: 'ord_123' }),
+)
+```
+
+Same shape for Fastify (`pqResponseSignerPlugin`), Hono (`pqResponseSigner` middleware), Cloudflare Workers (`withPqResponseSigning(signer, handler)`), and Vercel Node Functions (`pqResponseSigner({ signer })(handler)`).
+
+**Per-route, never global.** The middleware patches the response object for THIS request only — it does not monkeypatch `res.send` for the entire app. Existing 0.1.0 users who don't import the new middleware see zero behaviour change after upgrading.
+
+### `verifiedFetch` — receive + verify in one call
+
+```js
+import { createVerifier }   from 'kxco-post-quantum-webhook'
+import { verifiedFetch, KxcoResponseError } from 'kxco-post-quantum-webhook/verified-fetch'
+
+const verifier = createVerifier({
+  pqPublicKey: PARTNER_PQ_PUBKEY_HEX,
+  pinnedKid:   PARTNER_PQ_KID,
+  required:    'pq',
+})
+
+try {
+  const { response, kxcoResponse } = await verifiedFetch(
+    'https://partner-api.example.com/orders/123',
+    {},
+    { verifier },
+  )
+  // Body is safe to read — signature has been verified
+  const order = await response.json()
+} catch (err) {
+  if (err instanceof KxcoResponseError) {
+    console.error('signature failed:', err.kxcoResponse.reason)
+    // Unverified bytes are accessible via err.response if you really want them
+  }
+}
+```
+
+`verifiedFetch` throws `KxcoResponseError` **before** the caller can read the body when the signature fails (strict default). This prevents unverified bytes from leaking into application logic by accident. Pass `permissive: true` to get the result back even on failure.
+
+### Streaming caveat
+
+Response signing requires the full body to compute the envelope. **Don't mount the response-signing middleware on streaming routes** (SSE, chunked transfer). With `strict: true` an attempt to sign a streaming response throws; with the default `strict: false` the body is buffered (defeating the streaming purpose).
+
+---
+
+## Non-goals
+
+This package will deliberately not grow into the following. Each was considered and rejected with explicit reasoning:
+
+| | What we won't do | Why |
+|---|---|---|
+| **JWT signing/verification** | This is its own concern. JWT envelopes are different (JOSE `alg` fields, JWKS endpoints, header/payload separation), the wire-format risk to a draft-IETF `alg` name is real, and ML-DSA-65 token sizes break browser cookies (~5 KB > 4 KB hard limit). |
+| **JWKS / public-key hosting** | Either every adopter hosts their own endpoint or KXCO becomes a centralised trust authority. Both options were rejected in Phase 2 council review for the same reasons — institutions sign with their own keys, KXCO endorses nobody. Pin keys out of band. |
+| **Generic HTTP-security framework** | Webhook + response signing share the same wire format (envelope, headers, kid, policy). That's the scope. We will not add CSRF, rate-limiting, JWT verification, mTLS helpers, or anything else web-security adjacent — those belong in separate packages or your existing stack. |
+| **DKIM-PQ / email signing** | Requires MTA-level adoption (Postfix, OpenDKIM) and receiver-side support at scale. IETF DKIM-PQ work is too early — shipping a library now signs into a void. Deferred indefinitely; revisit when there's a draft at IETF WGLC and at least one major MTA ships verification support. |
+| **Hosted signing service** | KXCO Lab does not operate a hosted signing endpoint as part of this package. The signer runs in the publisher's process holding the publisher's private key. The only KXCO-hosted thing in this ecosystem is the [verify.kxco.ai](https://verify.kxco.ai) verifier (which uses the publisher's own published public key — KXCO performs no policy). |
+
+If you need any of the above, build it as a separate package on top of this one. The wire-format spec in [`docs/webhook-contract.md`](./docs/webhook-contract.md) is language-neutral and stable across the 0.x line.
+
+---
+
 ## See also
 
 - [`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum) — primitives (ML-DSA-65, ML-KEM-768, HMAC envelope)

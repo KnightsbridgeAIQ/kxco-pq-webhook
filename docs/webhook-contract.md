@@ -79,3 +79,14 @@ Reference signers: `kxco-post-quantum/src/webhook.js`. Reference verifier: `kxco
 This contract is stable across `kxco-post-quantum` `1.x` and `kxco-post-quantum-webhook` `0.x` / `1.x`. Breaking changes (new mandatory headers, signature-prefix changes, envelope format changes) will only land in a major version bump on both sides and are out of scope until at least 2027.
 
 A signature produced by `kxco-post-quantum` `1.0.3` and verified by any future verifier must continue to verify; the contract is forward-compatible by design.
+
+## Symmetric usage — webhook AND API response signing
+
+As of `kxco-post-quantum-webhook@0.2.0` this same wire format is used for **two** patterns:
+
+1. **Outbound webhook signing** — sender produces an HTTP request with `X-KXCO-*` headers; receiver verifies before processing.
+2. **Outbound API response signing** — server produces an HTTP response with the same `X-KXCO-*` headers; caller verifies before reading the body.
+
+The envelope (`${X-KXCO-Timestamp}.${raw body}`), header set, kid system, signing primitive, and `required` policy are identical. A receiver that can verify a webhook delivery from a platform can verify the same platform's signed API responses with zero additional code — pass the same `Verifier` instance to both `verifyDelivery()` and `verifiedFetch()`.
+
+The same `X-KXCO-PQ-Kid` resolves the same way in both contexts. Implementors in other languages building against this contract should ship one verifier that handles both, not two.

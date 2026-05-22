@@ -23,6 +23,8 @@
 
 export { createSigner, createVerifier }      from './builders.js'
 export { signedFetch, signedEnvelope }       from './client.js'
+export { signResponse, isStreamingBody }     from './response-core.js'
+export { verifiedFetch, KxcoResponseError }  from './verified-fetch.js'
 
 // Re-export the canonical low-level webhook helpers from kxco-post-quantum
 // for callers that want the original API surface.

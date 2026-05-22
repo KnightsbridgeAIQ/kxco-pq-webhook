@@ -15,3 +15,17 @@ declare module 'fastify' {
 
 declare const pqWebhookPlugin: (fastify: any, opts: FastifyPluginOpts) => Promise<void>
 export default pqWebhookPlugin
+
+import type { Signer } from './builders.js'
+
+export interface FastifyResponseSignerOpts {
+  signer: Signer
+  event?: string
+  /** When true, throw on streaming bodies. Default false: send unsigned. */
+  strict?: boolean
+}
+
+export function pqResponseSignerPlugin(
+  fastify: any,
+  opts: FastifyResponseSignerOpts,
+): Promise<void>

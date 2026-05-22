@@ -26,9 +26,12 @@
 // request stream before the signature can be verified. The wrapper buffers
 // the body into `req.rawBody` (a Buffer) and re-exposes it to the handler.
 
+import { signResponse, isStreamingBody } from './response-core.js'
+
 /**
  * @typedef {import('./builders.js').Verifier}      Verifier
  * @typedef {import('./builders.js').VerifyResult}  VerifyResult
+ * @typedef {import('./builders.js').Signer}        Signer
  */
 
 /**
@@ -67,6 +70,58 @@ export function nodePqWebhook(verifier, handler, opts = {}) {
       return
     }
     return handler(req, res)
+  }
+}
+
+/**
+ * Vercel Node-runtime response signer. Patches `res.send`/`res.json` on THIS
+ * response only — never global — so the outbound body is signed before it
+ * leaves the function.
+ *
+ *   export const config = { api: { bodyParser: true } }   // OK on send-side
+ *
+ *   export default pqResponseSigner({ signer })(async (req, res) => {
+ *     res.status(200).json({ ok: true })
+ *   })
+ *
+ * Note: this is a function-factory — call `pqResponseSigner({ signer })`
+ * once and pass the result your handler.
+ *
+ * @param {{ signer: Signer, event?: string, strict?: boolean }} opts
+ */
+export function pqResponseSigner(opts) {
+  if (!opts || !opts.signer || typeof opts.signer.sign !== 'function') {
+    throw new TypeError('pqResponseSigner (vercel): opts.signer must be a built signer (use createSigner)')
+  }
+  const { signer, event, strict = false } = opts
+  return function wrap(handler) {
+    return async function kxcoVercelResponseSigner(req, res) {
+      const origSend = res.send?.bind(res) || res.end.bind(res)
+      const origJson = res.json?.bind(res)
+
+      function attachAndSend(body) {
+        if (isStreamingBody(body)) {
+          if (strict) throw new Error('pqResponseSigner: streaming response body cannot be signed (set strict:false to send unsigned)')
+          return origSend(body)
+        }
+        const headers = signResponse(signer, body, { event })
+        for (const [k, v] of Object.entries(headers)) {
+          if (k.toLowerCase() === 'content-type' && res.getHeader('content-type')) continue
+          res.setHeader(k, v)
+        }
+        return origSend(body)
+      }
+
+      if (res.send) res.send = attachAndSend
+      if (origJson) {
+        res.json = function pqJson(body) {
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          return attachAndSend(JSON.stringify(body))
+        }
+      }
+
+      return handler(req, res)
+    }
   }
 }
 

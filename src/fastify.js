@@ -26,13 +26,21 @@
 //   2. Adds a preHandler hook that runs verifier.verify() and decorates
 //      request.kxcoWebhook
 
+import { signResponse, isStreamingBody } from './response-core.js'
+
 /**
  * @typedef {import('./builders.js').Verifier} Verifier
+ * @typedef {import('./builders.js').Signer}   Signer
  *
  * @typedef {Object} FastifyPluginOpts
  * @property {Verifier} verifier
  * @property {string}   [prefix]            — restrict plugin to a route prefix (default: applies to all routes)
  * @property {boolean}  [throwOnFail=false] — if true, don't 401; let the handler decide
+ *
+ * @typedef {Object} FastifyResponseSignerOpts
+ * @property {Signer}  signer
+ * @property {string}  [event]
+ * @property {boolean} [strict=false]
  */
 
 /**
@@ -75,3 +83,44 @@ pqWebhookPlugin[Symbol.for('skip-override')] = true
 pqWebhookPlugin[Symbol.for('fastify.display-name')] = 'kxco-post-quantum-webhook'
 
 export default pqWebhookPlugin
+
+/**
+ * Response-signing plugin. Register separately from `pqWebhookPlugin` (the
+ * verifier above) — they do unrelated things. Adds an `onSend` hook that
+ * signs `${ts}.${payload}` and attaches `X-KXCO-Timestamp` /
+ * `X-KXCO-PQ-Signature` / `X-KXCO-PQ-Kid` (and `X-KXCO-Signature` if HMAC
+ * is configured) headers to every response on routes within the plugin
+ * scope.
+ *
+ *   await app.register(pqResponseSignerPlugin, { signer, prefix: '/api' })
+ *
+ * @param {import('fastify').FastifyInstance} fastify
+ * @param {FastifyResponseSignerOpts} opts
+ */
+export async function pqResponseSignerPlugin(fastify, opts) {
+  if (!opts || !opts.signer || typeof opts.signer.sign !== 'function') {
+    throw new TypeError('pqResponseSigner (fastify): opts.signer must be a built signer (use createSigner)')
+  }
+  const { signer, event, strict = false } = opts
+
+  fastify.addHook('onSend', async (request, reply, payload) => {
+    if (isStreamingBody(payload)) {
+      if (strict) throw new Error('pqResponseSigner: streaming response body cannot be signed (set strict:false to send unsigned)')
+      return payload
+    }
+    // Fastify may pass a string, Buffer, or object — normalise to the bytes
+    // that will actually go on the wire.
+    const bodyBytes = typeof payload === 'string' || Buffer.isBuffer(payload)
+      ? payload
+      : (payload == null ? '' : JSON.stringify(payload))
+    const headers = signResponse(signer, bodyBytes, { event })
+    for (const [k, v] of Object.entries(headers)) {
+      if (k.toLowerCase() === 'content-type' && reply.getHeader('content-type')) continue
+      reply.header(k, v)
+    }
+    return bodyBytes
+  })
+}
+
+pqResponseSignerPlugin[Symbol.for('skip-override')] = true
+pqResponseSignerPlugin[Symbol.for('fastify.display-name')] = 'kxco-post-quantum-response-signer'
