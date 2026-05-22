@@ -1,0 +1,97 @@
+{
+  "name": "kxco-post-quantum-webhook",
+  "version": "0.1.0",
+  "description": "Drop-in webhook signing + verification for Express, Fastify, Hono, Cloudflare Workers, and Vercel Functions. Hybrid HMAC-SHA-256 + ML-DSA-65 (NIST FIPS 204) signatures over the canonical kxco-post-quantum webhook envelope. Use this on the sender side to outbound-sign with a single function; use it on the receiver side as a one-line middleware that rejects unsigned, stale, or kid-mismatched deliveries.",
+  "keywords": [
+    "post-quantum",
+    "pqc",
+    "ml-dsa",
+    "dilithium",
+    "nist",
+    "fips-204",
+    "webhook",
+    "webhook-signing",
+    "webhook-verification",
+    "hmac",
+    "express",
+    "fastify",
+    "hono",
+    "cloudflare-workers",
+    "vercel",
+    "kxco-post-quantum"
+  ],
+  "license": "Apache-2.0",
+  "author": "KXCO by Knightsbridge <hello@kxco.ai>",
+  "homepage": "https://kxco.ai",
+  "funding": "https://kxco.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JackKXCO/kxco-post-quantum-webhook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JackKXCO/kxco-post-quantum-webhook/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types":  "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./builders": {
+      "types":  "./src/builders.d.ts",
+      "import": "./src/builders.js"
+    },
+    "./client": {
+      "types":  "./src/client.d.ts",
+      "import": "./src/client.js"
+    },
+    "./express": {
+      "types":  "./src/express.d.ts",
+      "import": "./src/express.js"
+    },
+    "./fastify": {
+      "types":  "./src/fastify.d.ts",
+      "import": "./src/fastify.js"
+    },
+    "./hono": {
+      "types":  "./src/hono.d.ts",
+      "import": "./src/hono.js"
+    },
+    "./workers": {
+      "types":  "./src/workers.d.ts",
+      "import": "./src/workers.js"
+    },
+    "./vercel": {
+      "types":  "./src/vercel.d.ts",
+      "import": "./src/vercel.js"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "kxco-post-quantum": "^1.0.3"
+  },
+  "devDependencies": {
+    "kxco-post-quantum": "^1.0.3",
+    "fastify":           "^5.0.0"
+  },
+  "scripts": {
+    "test":     "node --test --test-reporter=spec test/builders.test.js test/client.test.js test/adapters.test.js test/fastify.test.js",
+    "test:cov": "node --test --experimental-test-coverage test/builders.test.js test/client.test.js test/adapters.test.js test/fastify.test.js",
+    "lint":     "node -c src/index.js && node -c src/builders.js && node -c src/client.js && node -c src/express.js && node -c src/fastify.js && node -c src/hono.js && node -c src/workers.js && node -c src/vercel.js"
+  },
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
+  }
+}
