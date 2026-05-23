@@ -1,6 +1,6 @@
 {
   "name": "kxco-post-quantum-webhook",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Drop-in webhook signing + verification for Express, Fastify, Hono, Cloudflare Workers, and Vercel Functions. Hybrid HMAC-SHA-256 + ML-DSA-65 (NIST FIPS 204) signatures over the canonical kxco-post-quantum webhook envelope. Use this on the sender side to outbound-sign with a single function; use it on the receiver side as a one-line middleware that rejects unsigned, stale, or kid-mismatched deliveries.",
   "keywords": [
     "post-quantum",
@@ -37,43 +37,43 @@
   "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "types":  "./src/index.d.ts",
+      "types": "./src/index.d.ts",
       "import": "./src/index.js"
     },
     "./builders": {
-      "types":  "./src/builders.d.ts",
+      "types": "./src/builders.d.ts",
       "import": "./src/builders.js"
     },
     "./client": {
-      "types":  "./src/client.d.ts",
+      "types": "./src/client.d.ts",
       "import": "./src/client.js"
     },
     "./response-core": {
-      "types":  "./src/response-core.d.ts",
+      "types": "./src/response-core.d.ts",
       "import": "./src/response-core.js"
     },
     "./verified-fetch": {
-      "types":  "./src/verified-fetch.d.ts",
+      "types": "./src/verified-fetch.d.ts",
       "import": "./src/verified-fetch.js"
     },
     "./express": {
-      "types":  "./src/express.d.ts",
+      "types": "./src/express.d.ts",
       "import": "./src/express.js"
     },
     "./fastify": {
-      "types":  "./src/fastify.d.ts",
+      "types": "./src/fastify.d.ts",
       "import": "./src/fastify.js"
     },
     "./hono": {
-      "types":  "./src/hono.d.ts",
+      "types": "./src/hono.d.ts",
       "import": "./src/hono.js"
     },
     "./workers": {
-      "types":  "./src/workers.d.ts",
+      "types": "./src/workers.d.ts",
       "import": "./src/workers.js"
     },
     "./vercel": {
-      "types":  "./src/vercel.d.ts",
+      "types": "./src/vercel.d.ts",
       "import": "./src/vercel.js"
     }
   },
@@ -91,12 +91,12 @@
   },
   "devDependencies": {
     "kxco-post-quantum": "^1.0.3",
-    "fastify":           "^5.0.0"
+    "fastify": "^5.0.0"
   },
   "scripts": {
-    "test":     "node --test --test-reporter=spec test/builders.test.js test/client.test.js test/adapters.test.js test/fastify.test.js test/response-signing.test.js test/verified-fetch.test.js",
+    "test": "node --test --test-reporter=spec test/builders.test.js test/client.test.js test/adapters.test.js test/fastify.test.js test/response-signing.test.js test/verified-fetch.test.js",
     "test:cov": "node --test --experimental-test-coverage test/builders.test.js test/client.test.js test/adapters.test.js test/fastify.test.js test/response-signing.test.js test/verified-fetch.test.js",
-    "lint":     "node -c src/index.js && node -c src/builders.js && node -c src/client.js && node -c src/response-core.js && node -c src/verified-fetch.js && node -c src/express.js && node -c src/fastify.js && node -c src/hono.js && node -c src/workers.js && node -c src/vercel.js"
+    "lint": "node -c src/index.js && node -c src/builders.js && node -c src/client.js && node -c src/response-core.js && node -c src/verified-fetch.js && node -c src/express.js && node -c src/fastify.js && node -c src/hono.js && node -c src/workers.js && node -c src/vercel.js"
   },
   "publishConfig": {
     "provenance": true,
