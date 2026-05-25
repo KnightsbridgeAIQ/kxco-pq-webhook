@@ -1,7 +1,9 @@
 # kxco-post-quantum-webhook
 
 [![npm](https://img.shields.io/npm/v/kxco-post-quantum-webhook?label=npm&color=b0964f)](https://www.npmjs.com/package/kxco-post-quantum-webhook)
+[![Socket](https://socket.dev/api/badge/npm/package/kxco-post-quantum-webhook)](https://socket.dev/npm/package/kxco-post-quantum-webhook)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
+[![node](https://img.shields.io/node/v/kxco-post-quantum-webhook.svg)](https://nodejs.org)
 [![verify](https://img.shields.io/badge/verify-kxco--verify-b0964f)](https://www.npmjs.com/package/kxco-verify)
 
 **Drop-in webhook signing + verification with hybrid HMAC-SHA-256 + ML-DSA-65 (NIST FIPS 204) signatures.** Apache 2.0. Adapters for **Express, Fastify, Hono, Cloudflare Workers, Vercel Functions**. The signing primitive is upstream [`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum) — this package adds opinionated builders, a one-line client SDK, and the framework glue.
@@ -313,6 +315,20 @@ This package will deliberately not grow into the following. Each was considered 
 If you need any of the above, build it as a separate package on top of this one. The wire-format spec in [`docs/webhook-contract.md`](./docs/webhook-contract.md) is language-neutral and stable across the 0.x line.
 
 ---
+
+## Security
+
+All signing and verification delegates to [`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum), which wraps [`@noble/post-quantum`](https://github.com/paulmillr/noble-post-quantum) — audited by Cure53 (2024). HMAC-SHA-256 uses the Node.js built-in `crypto` module. No outbound network calls are made by this library; it is purely a signing and verification layer.
+
+Keep private keys in environment variables or a KMS. Never log the `pqSecretKey` or `hmacSecret`. Use `required: 'both'` in production unless you have a documented reason not to.
+
+To report a vulnerability, open a [private security advisory](https://github.com/JackKXCO/kxco-post-quantum-webhook/security/advisories/new) or email **security@kxco.ai**.
+
+## Funding
+
+Maintained by **Shayne Heffernan** and **John Heffernan** at [KXCO by Knightsbridge](https://kxco.ai).
+
+[Knightsbridge Law](https://knightsbridge.law) · [target150.com](https://target150.com) · [livetradingnews.com](https://livetradingnews.com)
 
 ## See also
 
