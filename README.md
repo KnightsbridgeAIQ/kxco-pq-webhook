@@ -320,3 +320,9 @@ If you need any of the above, build it as a separate package on top of this one.
 - [`kxco-pq-cli`](https://www.npmjs.com/package/kxco-pq-cli) — `kxco-pq` binary for keygen / fingerprint / signed rotation manifests
 - [`kxco-verify`](https://www.npmjs.com/package/kxco-verify) — browser-safe verifier for deploy attestations + webhook deliveries
 - [`verify.kxco.ai`](https://verify.kxco.ai) — paste-URL verifier for the deploy-attestation flow (related but distinct from the webhook flow)
+
+## Maintainers
+
+Shayne Heffernan · John Heffernan — [KXCO by Knightsbridge](https://kxco.ai)
+
+Deployed in production at [target150.com](https://target150.com), [knightsbridgelaw.com](https://knightsbridgelaw.com), [livetradingnews.com](https://livetradingnews.com).
