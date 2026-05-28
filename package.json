@@ -103,10 +103,10 @@
     "node": ">=18"
   },
   "peerDependencies": {
-    "kxco-post-quantum": "^1.0.3"
+    "kxco-post-quantum": "^1.1.12"
   },
   "devDependencies": {
-    "kxco-post-quantum": "^1.0.3",
+    "kxco-post-quantum": "^1.1.12",
     "fastify": "^5.0.0"
   },
   "scripts": {
