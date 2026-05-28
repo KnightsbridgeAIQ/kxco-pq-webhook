@@ -1,7 +1,7 @@
 {
   "name": "kxco-post-quantum-webhook",
-  "version": "1.0.5",
-  "description": "Drop-in webhook signing + verification for Express, Fastify, Hono, Cloudflare Workers, and Vercel Functions. Hybrid HMAC-SHA-256 + ML-DSA-65 (NIST FIPS 204) signatures over the canonical kxco-post-quantum webhook envelope. Use this on the sender side to outbound-sign with a single function; use it on the receiver side as a one-line middleware that rejects unsigned, stale, or kid-mismatched deliveries.",
+  "version": "1.0.6",
+  "description": "Post-quantum ML-DSA-65 webhook signing and verification. Sign outgoing payloads so recipients can prove they came from you; verify incoming webhooks before processing them. Drop-in for HMAC-SHA256 webhook patterns, but quantum-safe.",
   "keywords": [
     "post-quantum",
     "pqc",

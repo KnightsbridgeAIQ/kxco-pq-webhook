@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6 — 2026-05-28
+
+Documentation and package description update. No API changes.
+
 ## 1.0.0 — 2026-05-24
 
 Stable release.
