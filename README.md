@@ -393,7 +393,7 @@ All signing and verification delegates to [`kxco-post-quantum`](https://www.npmj
 
 Keep private keys in environment variables or a KMS. Never log `pqSecretKey` or `hmacSecret`. Use `required: 'both'` in production unless you have a documented reason not to.
 
-To report a vulnerability, open a [private security advisory](https://github.com/JackKXCO/kxco-post-quantum-webhook/security/advisories/new) or email security@kxco.ai.
+To report a vulnerability, open a [private security advisory](https://github.com/KnightsbridgeAIQ/kxco-pq-webhook/security/advisories/new) or email security@kxco.ai.
 
 ---
 
