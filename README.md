@@ -397,6 +397,10 @@ To report a vulnerability, open a [private security advisory](https://github.com
 
 ---
 
+## Examples
+
+Copy-paste-runnable receiver templates — Express, Next.js, AWS Lambda, Cloudflare Workers, Vercel Edge, GitHub Actions, key-rotation and response-signing patterns — live in [`./examples`](./examples).
+
 ## License
 
 Apache 2.0 — see [LICENSE](./LICENSE). The upstream signer ([`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum)) is MIT. The split is deliberate — receivers of this package can audit the verification path in isolation.
