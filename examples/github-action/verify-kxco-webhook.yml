@@ -1,0 +1,67 @@
+name: verify-kxco-webhook
+
+# Reusable workflow that verifies a KXCO webhook payload relayed into a
+# GitHub Actions job via workflow_dispatch or repository_dispatch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      timestamp:
+        description: 'X-KXCO-Timestamp header value'
+        required: true
+      body:
+        description: 'Raw webhook body (JSON string)'
+        required: true
+      hmac_signature:
+        description: 'X-KXCO-Signature header value'
+        required: false
+      pq_signature:
+        description: 'X-KXCO-PQ-Signature header value'
+        required: true
+      pq_kid:
+        description: 'X-KXCO-PQ-Kid header value'
+        required: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      KXCO_PUBLIC_KID:     ${{ secrets.KXCO_PUBLIC_KID }}
+      KXCO_PUBLIC_KEY_HEX: ${{ secrets.KXCO_PUBLIC_KEY_HEX }}
+      KXCO_WEBHOOK_SECRET: ${{ secrets.KXCO_WEBHOOK_SECRET }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Install verifier
+        run: npm install kxco-post-quantum
+
+      - name: Verify
+        env:
+          INPUT_TIMESTAMP:     ${{ inputs.timestamp }}
+          INPUT_BODY:          ${{ inputs.body }}
+          INPUT_HMAC_SIG:      ${{ inputs.hmac_signature }}
+          INPUT_PQ_SIG:        ${{ inputs.pq_signature }}
+          INPUT_PQ_KID:        ${{ inputs.pq_kid }}
+        run: |
+          cat > verify.js <<'EOF'
+          import { webhook } from 'kxco-post-quantum'
+          const r = webhook.verifyDelivery({
+            headers: {
+              'x-kxco-timestamp':    process.env.INPUT_TIMESTAMP,
+              'x-kxco-signature':    process.env.INPUT_HMAC_SIG || '',
+              'x-kxco-pq-signature': process.env.INPUT_PQ_SIG,
+              'x-kxco-pq-kid':       process.env.INPUT_PQ_KID,
+            },
+            rawBody:     process.env.INPUT_BODY,
+            hmacSecret:  process.env.KXCO_WEBHOOK_SECRET,
+            pqPublicKey: Buffer.from(process.env.KXCO_PUBLIC_KEY_HEX, 'hex'),
+            pinnedKid:   process.env.KXCO_PUBLIC_KID,
+          })
+          if (!r.timestampOk || !r.kidOk || (!r.hmacOk && !r.pqOk)) {
+            console.error('verification failed', r)
+            process.exit(1)
+          }
+          console.log('verified', r)
+          EOF
+          node --experimental-vm-modules verify.js
