@@ -1,6 +1,6 @@
 {
   "name": "kxco-post-quantum-webhook",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Post-quantum ML-DSA-65 webhook signing and verification. Sign outgoing payloads so recipients can prove they came from you; verify incoming webhooks before processing them. Drop-in for HMAC-SHA256 webhook patterns, but quantum-safe.",
   "keywords": [
     "post-quantum",
@@ -29,7 +29,7 @@
     "deno"
   ],
   "license": "Apache-2.0",
-  "author": "KXCO by Knightsbridge <hello@kxco.ai>",
+  "author": "Shayne Heffernan and John Heffernan",
   "contributors": [
     {
       "name": "Shayne Heffernan"
@@ -106,8 +106,8 @@
     "kxco-post-quantum": "^1.0.3"
   },
   "devDependencies": {
-    "kxco-post-quantum": "^1.0.3",
-    "fastify": "^5.0.0"
+    "fastify": "^5.0.0",
+    "kxco-post-quantum": "^1.0.3"
   },
   "scripts": {
     "test": "node --test --test-reporter=spec test/builders.test.js test/client.test.js test/adapters.test.js test/fastify.test.js test/response-signing.test.js test/verified-fetch.test.js",
