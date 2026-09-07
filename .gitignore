@@ -5,3 +5,6 @@ node_modules/
 .env.local
 coverage/
 .nyc_output/
+
+# Generated evidence bundle. Reproduce with `npm run evidence`.
+dist/
