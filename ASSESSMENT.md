@@ -57,10 +57,13 @@ implementation. For an assessment that is a real property: it makes the
 protocol checkable independently of the code.
 
 **Start and update.** No release signing of its own, and **1.2.2 carries no
-provenance attestation**. It is the only current release in the family without
-one, though not the only version of this package: 1.0.6, 1.0.7 and 1.1.0 have
-none either, so verify the version you are installing rather than the package.
-Seventeen of the twenty-one published versions carry an attestation.
+provenance attestation**. Seventeen of the twenty-one published versions do,
+including an unbroken run from 1.1.2 through 1.2.1 immediately before this one,
+so the break is a single release with a known cause rather than a package that
+never had provenance.
+
+The exceptions are 1.0.6, 1.0.7, 1.1.0 and 1.2.2. Verify the version you are
+installing rather than the package.
 
 Every other package here publishes from CI through npm Trusted Publishing and
 ships a SLSA provenance statement. This one could not: its trusted publisher

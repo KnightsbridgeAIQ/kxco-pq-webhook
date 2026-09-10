@@ -18,9 +18,9 @@ Every release of this package is checkable without asking us for anything.
   with `npm audit signatures`, or read it directly from
   `registry.npmjs.org/-/npm/v1/attestations/kxco-post-quantum-webhook@<version>`.
 
-  **Four published versions have no attestation: 1.0.6, 1.0.7, 1.1.0 and
-  1.2.2.** Check the version you are installing rather than assuming; the other
-  seventeen carry one.
+  **Seventeen of the twenty-one published versions carry one**, including an
+  unbroken run from 1.1.2 through 1.2.1. The exceptions are 1.0.6, 1.0.7, 1.1.0
+  and 1.2.2, so check the version you are installing rather than assuming.
 
   1.2.2 is the recent one and the cause is known. This package's npm trusted
   publisher was registered with the package name in the repository field, while
