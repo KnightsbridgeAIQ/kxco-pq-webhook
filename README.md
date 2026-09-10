@@ -13,10 +13,17 @@ Post-quantum ML-DSA-65 webhook signing and verification. Sign outgoing webhook p
 
 Every release of this package is checkable without asking us for anything.
 
-- **Provenance.** Each release carries a SLSA provenance attestation tying the
-  published tarball to the commit and workflow that built it. Verify with
-  `npm audit signatures`, or read it directly from
+- **Provenance.** Releases built in CI carry a SLSA provenance attestation
+  tying the published tarball to the commit and workflow that built it. Verify
+  with `npm audit signatures`, or read it directly from
   `registry.npmjs.org/-/npm/v1/attestations/kxco-post-quantum-webhook@<version>`.
+
+  **1.2.2 is the exception and has no attestation.** This package's npm trusted
+  publisher was registered with the package name in the repository field, while
+  the workflow runs in the repository `kxco-pq-webhook`, so CI publishing fails
+  and 1.2.2 was released from a workstation, which cannot mint provenance.
+  Every earlier release has one, and so will the next once that entry is
+  corrected. Stated here rather than left for `npm audit signatures` to reveal.
 - **Bill of materials.** A CycloneDX SBOM is published as a GitHub Release asset
   at `releases/download/v<version>/sbom.cyclonedx.json`, a permanent
   unauthenticated URL. Not an expiring build artifact.
