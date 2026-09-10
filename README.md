@@ -18,12 +18,15 @@ Every release of this package is checkable without asking us for anything.
   with `npm audit signatures`, or read it directly from
   `registry.npmjs.org/-/npm/v1/attestations/kxco-post-quantum-webhook@<version>`.
 
-  **1.2.2 is the exception and has no attestation.** This package's npm trusted
+  **Four published versions have no attestation: 1.0.6, 1.0.7, 1.1.0 and
+  1.2.2.** Check the version you are installing rather than assuming; the other
+  seventeen carry one.
+
+  1.2.2 is the recent one and the cause is known. This package's npm trusted
   publisher was registered with the package name in the repository field, while
-  the workflow runs in the repository `kxco-pq-webhook`, so CI publishing fails
-  and 1.2.2 was released from a workstation, which cannot mint provenance.
-  Every earlier release has one, and so will the next once that entry is
-  corrected. Stated here rather than left for `npm audit signatures` to reveal.
+  the workflow runs in the repository `kxco-pq-webhook`, so CI publishing
+  returns a 404 and 1.2.2 was released from a workstation, which cannot mint
+  provenance. Correcting that entry restores it for the next release.
 - **Bill of materials.** A CycloneDX SBOM is published as a GitHub Release asset
   at `releases/download/v<version>/sbom.cyclonedx.json`, a permanent
   unauthenticated URL. Not an expiring build artifact.
