@@ -56,8 +56,23 @@ a verifier in another language against the mathematics rather than against this
 implementation. For an assessment that is a real property: it makes the
 protocol checkable independently of the code.
 
-**Start and update.** No release signing of its own. Published through CI with
-npm provenance.
+**Start and update.** No release signing of its own, and **1.2.2 carries no
+provenance attestation**, which makes it the exception in this family rather
+than the rule.
+
+Every other package here publishes from CI through npm Trusted Publishing and
+ships a SLSA provenance statement. This one could not: its trusted publisher
+entry was created with the package name, `kxco-post-quantum-webhook`, in the
+repository field, while the workflow runs in `kxco-pq-webhook`. The GitHub
+repository was renamed and the npm entry was not, so the OIDC claim never
+matched and every CI publish failed with a 404 on PUT. 1.2.2 was published from
+a workstation on 10 September 2026, and a workstation cannot mint provenance.
+
+The fix is on the npm side and is one action: delete that trusted publisher and
+create one naming the repository `kxco-pq-webhook`. Until then this package's
+releases are the only ones in the family a buyer cannot verify by attestation,
+and that is stated here rather than left to be discovered by checking
+`npm view kxco-post-quantum-webhook`.
 
 ## Agility
 
