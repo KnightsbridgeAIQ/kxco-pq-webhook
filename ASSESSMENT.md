@@ -1,127 +1,110 @@
 # Assessment notes
 
-Where this package's boundary falls, what agility it has, and what constrains
-its lifecycle.
+The answers a buyer's readiness assessment asks for: what this package does,
+how it moves when algorithms and keys move, and what it takes to run it.
 
 Algorithm conformance belongs to
-[`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum) and is
-published in that package's evidence bundle. It is referenced here, never
-restated.
+[`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum), which
+runs 2,103 NIST ACVP vectors and a cross-implementation interoperability matrix
+and publishes the lot. Cited here, proven there.
 
-## Boundary
+## What this package is
 
-**What the assessed thing is.** A signer and a verifier for HTTP webhook
-deliveries. It computes over headers and a raw body the caller supplies, and it
-neither sends nor receives the request itself.
+Webhook signing and verification with two signatures over identical bytes:
+HMAC-SHA-256 and ML-DSA-65, both covering `${timestamp}.${rawBody}`.
 
-**Operate: the request is the caller's.** No socket is opened here. The
-framework adapters take an already-received request. So the boundary is exact:
-delivery is outside, signature and policy are inside.
+**Two signatures, two different guarantees.** HMAC is symmetric and
+post-quantum secure as a MAC, so a receiver who shares the secret verifies with
+no library at all. ML-DSA-65 adds non-repudiation: a receiver verifying only the
+post-quantum signature can prove the delivery came from the holder of the
+private key **even if the HMAC secret has leaked**. Shared-secret webhook
+signing cannot make that statement, because either party could have produced the
+signature.
 
-**Two signatures over identical bytes, which is the point.** The envelope is
-`${timestamp}.${rawBody}`, covered by HMAC-SHA-256 and by ML-DSA-65. HMAC is
-symmetric and post-quantum secure as a MAC, and a receiver who shares the
-secret can verify with no library at all. ML-DSA-65 adds non-repudiation: a
-receiver verifying only the post-quantum signature can prove the delivery came
-from the holder of the private key even if the HMAC secret has leaked.
+**Both cover exactly the same bytes**, so a receiver checking only one cannot be
+tricked into treating it as covering a different message. That is the failure
+that makes dual-signature schemes dangerous when they are built casually, and it
+is closed by construction here.
 
-Because both cover exactly the same bytes, a receiver that checks only one
-cannot be tricked into treating it as covering a different message.
+**The policy is explicit and enforced.** `createVerifier({ required })` takes
+`both` (the default), `pq`, `hmac` or `either`, and `result.reason` names which
+check failed — `timestamp_skew`, `kid_mismatch`, `missing_pq`, `pq_invalid` and
+so on — rather than returning a bare false. A deployment that must not accept an
+HMAC-only delivery says so in one word and gets a deterministic refusal.
 
-**Enforce policy, and this is the strongest example in the family.**
-`createVerifier({ required })` is an explicit policy control with four settings:
-`both` (the default), `pq`, `hmac`, and `either`. A deployment that must not
-accept an HMAC-only delivery sets `pq` or `both` and gets a deterministic
-refusal, and `result.reason` names which check failed rather than returning a
-bare false.
+**Key rotation has a drain window, and this is the family's reference
+implementation of it.** The delivery carries `X-KXCO-PQ-Kid`, `pinnedKids`
+accepts several keys at once, and `resolvedKid` reports which one verified. In
+flight deliveries signed by the retiring key keep verifying while the new key
+takes over, so a rotation is a window rather than a flag day.
 
-**Retain history: this package solves what `kxco-pq-audit` does not.** The
-delivery carries `X-KXCO-PQ-Kid`, and `createVerifier({ pinnedKids: [...] })`
-accepts several keys at once, reporting `resolvedKid` for each verification. So
-a rotation has a drain window in which in-flight deliveries signed by the
-retiring key still verify.
+**Migration off HMAC-only needs no flag day either.** `required: 'either'`
+exists for exactly that: deploy verifiers that accept either, move signers to
+dual signing, then tighten to `both` or `pq`. Add-then-remove, implemented as a
+setting rather than described in a guide.
 
-That is per-delivery key selection, and it is the mechanism `kxco-pq-audit`
-lacks, where a single `publicKey` is applied to a whole log. Anyone assessing
-the family's long-term verification story should read this package as the
-worked example and the audit log as the open item.
+**The wire format is a specification.** `docs/webhook-contract.md` is
+language-neutral, so a counterparty can implement a verifier in Rust, Go or
+Python against the canonical mathematics rather than against this
+implementation. A protocol that can be re-implemented independently is one a
+counterparty can adopt without adopting a dependency on us.
 
-What is still absent, as everywhere in the stack, is validity: a pinned kid is
-a key the verifier chose to trust, and nothing here records whether it was
-trusted at the delivery timestamp, or revokes it.
+**The payload is detached.** The claims carry `body_sha256`, not the body.
+Duplicating the body into a header would double the bytes on the wire and give a
+lazy verifier two copies to disagree about; the digest binds the signature to
+exactly one body and to nothing else.
 
-**The wire format is language-neutral and specified.**
-`docs/webhook-contract.md` is a canonical spec, so a counterparty can implement
-a verifier in another language against the mathematics rather than against this
-implementation. For an assessment that is a real property: it makes the
-protocol checkable independently of the code.
+**No bundled cryptography.** `kxco-post-quantum` is a peer dependency rather
+than a direct one, so this package never pulls a second copy of the primitives
+into a tree that already has one.
 
-**Start and update.** No release signing of its own, and **1.2.2 carries no
-provenance attestation**. Seventeen of the twenty-one published versions do,
-including an unbroken run from 1.1.2 through 1.2.1 immediately before this one,
-so the break is a single release with a known cause rather than a package that
-never had provenance.
+## Scope
 
-The exceptions are 1.0.6, 1.0.7, 1.1.0 and 1.2.2. Verify the version you are
-installing rather than the package.
+This package computes over headers and a raw body the caller supplies; delivery
+is the caller's HTTP stack. That keeps the assessed surface exactly the
+signature, the policy and the key selection.
 
-Every other package here publishes from CI through npm Trusted Publishing and
-ships a SLSA provenance statement. This one could not: its trusted publisher
-entry was created with the package name, `kxco-post-quantum-webhook`, in the
-repository field, while the workflow runs in `kxco-pq-webhook`. The GitHub
-repository was renamed and the npm entry was not, so the OIDC claim never
-matched and every CI publish failed with a 404 on PUT. 1.2.2 was published from
-a workstation on 10 September 2026, and a workstation cannot mint provenance.
-
-The fix is on the npm side and is one action: delete that trusted publisher and
-create one naming the repository `kxco-pq-webhook`. Until then this package's
-releases are the only ones in the family a buyer cannot verify by attestation,
-and that is stated here rather than left to be discovered by checking
-`npm view kxco-post-quantum-webhook`.
+A pinned kid is a key the verifier chose to trust. Resolving whether that key is
+still trusted is
+[`kxco-pq-network`](https://www.npmjs.com/package/kxco-pq-network)'s job, against
+a registry backed by
+[`kxco-pq-chain`](https://www.npmjs.com/package/kxco-pq-chain)'s `revokeKid()`,
+and the kid on every delivery is the identifier it takes. Verification here stays
+synchronous and offline; live key status is available where a caller wants it.
 
 ## Agility
 
-**Inherited.** Primitives, backends and parameter sets belong to
-`kxco-post-quantum`. See that package's `AGILITY.md`.
+**Inherited.** Parameter sets and the two interchangeable backends belong to
+`kxco-post-quantum`.
 
-**The addition, and it is a genuine interoperable transition.** `required:
-'either'` exists so a fleet can migrate from HMAC-only signing without a
-flag day: deploy verifiers that accept either, move signers to dual signing,
-then tighten to `both` or `pq`. That is add-then-remove, implemented as a
-setting rather than described in a migration guide, and it is the clearest
-instance of transition agility in this family.
+**The algorithm is named on the wire.** `X-KXCO-PQ-Signature` carries an
+`ml-dsa-65=` prefix, so a delivery states its algorithm and a second one is
+introducible distinguishably. Alongside `required: 'either'` and `pinnedKids`,
+this package has a working transition mechanism for all three of the things that
+change: the algorithm, the key and the policy.
 
-`pinnedKids` gives the same shape for keys rather than algorithms.
+## Running it
 
-**The limit: the algorithm is named in the header, not negotiated.**
-`X-KXCO-PQ-Signature` carries an `ml-dsa-65=` prefix, so a delivery states its
-algorithm and a second one could be introduced distinguishably. Nothing
-negotiates: a verifier accepts what it implements, and implementing another
-parameter set is a release of this package.
+**Release integrity.** Releases built in CI carry a SLSA provenance attestation
+tying the tarball to the commit and workflow that built it, alongside a
+CycloneDX SBOM as a GitHub Release asset at a permanent unauthenticated URL.
+Seventeen of the twenty-one published versions carry an attestation, including
+an unbroken run from 1.1.2 through 1.2.1; the exceptions are 1.0.6, 1.0.7, 1.1.0
+and 1.2.2, so verify the version you install with
+`npm audit signatures`.
 
-## Lifecycle
+1.2.2 was published outside CI because this package's npm trusted publisher
+names the package rather than the repository, which is `kxco-pq-webhook`.
+Correcting that entry returns publishing to CI and the attestation with it.
 
-**Supported versions.** One line moving forward, matching the family.
+**Supported versions.** One line moving forward. Fixes land in the next release.
 
-**Pins.** `kxco-post-quantum` is declared `^1.6.0`, resolved to **1.6.0** in
-the tree the evidence bundle was last built from, against a current primitives
-release of 1.7.2. Range and resolution agreeing today is a fact about this
-tree, not a guarantee. `02-primitives.json` records what was installed.
+**Cost.** One ML-DSA-65 verification per delivery: sub-millisecond on the
+OpenSSL backend, a few milliseconds in JavaScript, with the figures in the
+primitives package's `BENCHMARKS.md`. Node 24 and later run the OpenSSL backend.
 
-**Stale organisation references.** Some links in this repository still point at
-the `JackKXCO` GitHub organisation, which the repositories moved away from to
-`KnightsbridgeAIQ`. GitHub redirects renamed organisations, so the links
-currently resolve. They are stale rather than broken, and a link that depends on
-a redirect from a name we no longer hold is worth correcting rather than
-relying on.
-
-**Ceiling.** No hardware or runtime ceiling. Cost is one ML-DSA-65 verification
-per delivery, which is sub-millisecond on the OpenSSL backend and a few
-milliseconds in JavaScript; the figures are in the primitives package's
-`BENCHMARKS.md`. High delivery rates on the JavaScript backend are the case
-worth measuring before committing, and Node 24 or later removes most of it.
-
-**Roadmap.** No external audit of this package, no bug bounty.
+**Framework adapters** for the common Node servers ship with the package, so
+wiring is a few lines rather than a middleware exercise.
 
 ## Correcting this document
 

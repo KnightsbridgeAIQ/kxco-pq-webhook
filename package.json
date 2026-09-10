@@ -1,6 +1,6 @@
 {
   "name": "kxco-post-quantum-webhook",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Post-quantum ML-DSA-65 webhook signing and verification. Sign outgoing payloads so recipients can prove they came from you, and verify incoming ones before processing. Drop-in for HMAC-SHA256 patterns, with an optional compact-JWS path.",
   "keywords": [
     "post-quantum",
