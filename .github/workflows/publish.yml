@@ -68,8 +68,21 @@ jobs:
       # No NODE_AUTH_TOKEN here, deliberately. A token present in the
       # environment is used in preference to the package's trusted publisher,
       # so a stale secret turns a working OIDC publish into a 404 on PUT.
+      # npm's failure is emitted as a workflow annotation, not only into the
+      # run log. Downloading a run log needs admin rights on the repository,
+      # so the v1.2.2 and v1.2.3 publish failures were visible but unreadable
+      # and the cause had to be guessed at. It should not have to be.
       - name: Publish (provenance via OIDC, through the trusted publisher)
-        run: npm publish --provenance --access public
+        run: |
+          set +e
+          npm publish --provenance --access public 2>&1 | tee /tmp/publish.txt
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            msg=$(grep -iE 'npm error|forbidden|unauthor|oidc|trusted|provenance' /tmp/publish.txt | head -20 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=npm publish failed::${msg}"
+          fi
+          exit "$status"
 
       # The SBOM runs AFTER the publish and cannot fail the job. The package is
       # already on the registry by this point, so failing here would misreport a
