@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.4
+
+No source change. This exists because 1.2.3 never reached npm.
+
+Its release build failed at the publish step, as 1.2.2's did twice before it.
+The run log that would say why needs admin rights on the repository to
+download, so the cause was visible as a red build and unreadable as a reason.
+That is how 1.2.2 came to be published by hand from a workstation, which is
+why the version on npm carries no provenance attestation while the README
+claimed every release had one.
+
+The publish step now emits npm's own error as a workflow annotation, which
+anyone who can see the run can read.
+
 ## 1.2.3
 
 Documentation. No source change.
