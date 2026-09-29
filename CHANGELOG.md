@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.5
+
+Documentation. No source change.
+
+**The npm page leads with what the package proves.** The first screen now leads
+with the two signatures over the same bytes, proof of origin that holds even if
+the HMAC secret leaks, migration and key rotation with no flag day, the five
+framework adapters, and the migration dates set by NIST, Executive Order 14412,
+OMB M-26-15 and the UK NCSC.
+
+A family table maps every KXCO package to the job it does, and a new For
+institutions section sets out the operated services and how to reach us. The
+evidence documents are unchanged and linked from the page.
+
+The Fastify example now removes Fastify's built-in JSON and text parsers before
+registering the plugin, so the verifier checks the exact bytes received and the
+handler reads the body as a Buffer.
+
+1.2.5 carries the 1.2.3 and 1.2.4 changes to npm: the rewritten ASSESSMENT.md,
+published by the release build that now reports npm's own error as a workflow
+annotation.
+
 ## 1.2.4
 
 No source change. This exists because 1.2.3 never reached npm.
