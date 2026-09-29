@@ -1,6 +1,6 @@
 {
   "name": "kxco-post-quantum-webhook",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Post-quantum webhook signing: HMAC-SHA256 and ML-DSA-65 over the same bytes, so a receiver can prove who sent each delivery. Adapters for Express, Fastify, Hono, Cloudflare Workers and Vercel, key rotation with a drain window, and an optional compact-JWS path.",
   "keywords": [
     "post-quantum",
@@ -108,6 +108,7 @@
     "src",
     "README.md",
     "LICENSE",
+    "NOTICE",
     "CHANGELOG.md",
     "ASSESSMENT.md"
   ],
