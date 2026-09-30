@@ -138,6 +138,43 @@ test('a delivery whose timestamp has changed fails every policy, with the body u
   }), SIGNING)
 })
 
+test('a timestamp header that is not all digits is refused as timestamp_skew under every policy, however it was signed', () => {
+  const text = fc.string({ maxLength: 20, size: 'max' })
+  const malformed = fc.oneof(
+    text.map((x) => (ts) => `${ts}.${x}`),
+    fc.tuple(fc.oneof(fc.constantFrom('', ' ', '+', '-'), text), text).map(([pre, post]) => (ts) => `${pre}${ts}${post}`),
+  )
+  fc.assert(fc.property(body, secret, malformed, (b, s, f) => {
+    const ts = f(String(Math.floor(Date.now() / 1000)))
+    fc.pre(!/^[0-9]+$/.test(ts))
+    const headers = {
+      'X-KXCO-Timestamp': ts,
+      'X-KXCO-Signature': `sha256=${webhook.hmacHex(s, ts, b)}`,
+      'X-KXCO-PQ-Signature': webhook.pqSign(K1.secretKey, ts, b),
+      'X-KXCO-PQ-Kid': K1.kid,
+    }
+    const v = verifiers(s)
+    return POLICIES.every((policy) => {
+      const r = v[policy].verify(headers, b)
+      return r.ok === false && r.reason === 'timestamp_skew'
+    })
+  }), SIGNING)
+})
+
+test('moving the start of a body into the timestamp header, up to any dot, fails every policy as timestamp_skew', () => {
+  const parts = fc.array(fc.string({ maxLength: 30, size: 'max' }), { minLength: 2, maxLength: 6, size: 'max' })
+  fc.assert(fc.property(parts, secret, fc.nat(), (p, s, at) => {
+    const signed = createSigner({ hmacSecret: s, pqSecretKey: K1.secretKey, pqKid: K1.kid }).sign(p.join('.'))
+    const i = 1 + (at % (p.length - 1))
+    const moved = { ...signed, 'X-KXCO-Timestamp': `${signed['X-KXCO-Timestamp']}.${p.slice(0, i).join('.')}` }
+    const v = verifiers(s)
+    return POLICIES.every((policy) => {
+      const r = v[policy].verify(moved, p.slice(i).join('.'))
+      return r.ok === false && r.reason === 'timestamp_skew'
+    })
+  }), SIGNING)
+})
+
 test('the timestamp window decides: a correctly signed delivery verifies inside windowSeconds and is refused as timestamp_skew outside it', () => {
   fc.assert(fc.property(body, secret, fc.integer({ min: 0, max: 3600 }), fc.nat({ max: 10_000_000 }), fc.boolean(), (b, s, windowSeconds, offset, ahead) => {
     // Clear of the boundary by two seconds either way, so the clock moving
