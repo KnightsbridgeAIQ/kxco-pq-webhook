@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.7
+
+A malformed X-KXCO-Timestamp is refused as timestamp_skew, as
+docs/webhook-contract.md specifies, whatever kxco-post-quantum version is
+installed.
+
+The wire-format tables in the README and the contract say that X-KXCO-Event and
+X-KXCO-Delivery are not signed.
+
 ## 1.2.6
 
 Documentation. No source change.
