@@ -215,8 +215,8 @@ The signature envelope is `${timestamp}.${rawBody}`. Headers sent with every del
 | `X-KXCO-Signature` | `sha256=<64 hex chars>` HMAC-SHA256 |
 | `X-KXCO-PQ-Signature` | `ml-dsa-65=<hex>` ML-DSA-65 signature |
 | `X-KXCO-PQ-Kid` | 16 hex chars: the first 8 bytes of the SHA-256 of the public key bytes |
-| `X-KXCO-Event` | Optional event name |
-| `X-KXCO-Delivery` | Optional idempotency / trace ID |
+| `X-KXCO-Event` | Optional event name. Not signed: it sits outside the envelope |
+| `X-KXCO-Delivery` | Optional idempotency / trace ID. Not signed: it sits outside the envelope |
 
 The full wire-format spec is in [`docs/webhook-contract.md`](./docs/webhook-contract.md). It is language-neutral: anyone can re-implement the verifier in Rust, Go, Python, or any other language against the canonical mathematics.
 

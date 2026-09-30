@@ -3,7 +3,7 @@
 import { test }   from 'node:test'
 import assert     from 'node:assert/strict'
 import crypto     from 'node:crypto'
-import { mlDsa, fingerprint } from 'kxco-post-quantum'
+import { mlDsa, fingerprint, webhook } from 'kxco-post-quantum'
 
 import { createSigner, createVerifier } from '../src/builders.js'
 
@@ -169,6 +169,40 @@ test('stale timestamp → timestamp_skew', () => {
   const r = verifier.verify(headers, '{"a":1}')
   assert.equal(r.ok, false)
   assert.equal(r.reason, 'timestamp_skew')
+})
+
+// Both signatures cover the timestamp header exactly as it arrives, so it is
+// accepted only as decimal digits. docs/webhook-contract.md: a malformed
+// X-KXCO-Timestamp is timestamp_skew.
+test('timestamp header that is not all digits → timestamp_skew, under every policy', () => {
+  const policies = ['hmac', 'pq', 'both', 'either']
+  const verifier = (required) => createVerifier({ hmacSecret: HMAC, pqPublicKey: KP.publicKey, pinnedKid: KID, required })
+
+  // Signed normally, then delivered with the start of the body, up to a '.',
+  // moved into the timestamp header.
+  const signed = createSigner({ hmacSecret: HMAC, pqSecretKey: KP.secretKey, pqKid: KID }).sign('{"amount":"12.50","to":"acct_1"}')
+  const moved  = { ...signed, 'X-KXCO-Timestamp': `${signed['X-KXCO-Timestamp']}.{"amount":"12` }
+  for (const required of policies) {
+    const r = verifier(required).verify(moved, '50","to":"acct_1"}')
+    assert.equal(r.ok, false, required)
+    assert.equal(r.reason, 'timestamp_skew', required)
+  }
+
+  // Refused even when both signatures cover the malformed header exactly.
+  const now = String(Math.floor(Date.now() / 1000))
+  for (const ts of [`${now}.x`, `${now}.0`, `${now}e0`, `${now} `, ` ${now}`, `+${now}`]) {
+    const headers = {
+      'X-KXCO-Timestamp':    ts,
+      'X-KXCO-Signature':    'sha256=' + webhook.hmacHex(HMAC, ts, 'x'),
+      'X-KXCO-PQ-Signature': webhook.pqSign(KP.secretKey, ts, 'x'),
+      'X-KXCO-PQ-Kid':       KID,
+    }
+    for (const required of policies) {
+      const r = verifier(required).verify(headers, 'x')
+      assert.equal(r.ok, false, `${required} ${JSON.stringify(ts)}`)
+      assert.equal(r.reason, 'timestamp_skew', `${required} ${JSON.stringify(ts)}`)
+    }
+  }
 })
 
 test('missing HMAC header under required="hmac" → missing_hmac', () => {

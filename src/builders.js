@@ -205,8 +205,13 @@ export function createVerifier(opts) {
         }
       }
 
+      // Both signatures cover the timestamp header exactly as it arrives, so
+      // it is accepted only as the decimal digits the contract specifies,
+      // whatever the installed kxco-post-quantum makes of it. Anything else is
+      // passed on as absent, which fails the window and gives timestamp_skew.
+      const tsWellFormed = /^[0-9]+$/.test(lower['x-kxco-timestamp'])
       const r = verifyDelivery({
-        headers:      lower,
+        headers:      tsWellFormed ? lower : { ...lower, 'x-kxco-timestamp': undefined },
         rawBody,
         hmacSecret,
         pqPublicKey:  effPubKey,
