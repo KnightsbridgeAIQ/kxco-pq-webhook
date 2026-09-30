@@ -21,8 +21,8 @@ ${X-KXCO-Timestamp}.${raw request body}
 | `X-KXCO-Signature` | optional* | `sha256=<64-hex-char>` | HMAC-SHA-256 over the envelope, hex-encoded, with mandatory `sha256=` prefix |
 | `X-KXCO-PQ-Signature` | optional* | `ml-dsa-65=<6618-hex-char>` | ML-DSA-65 (NIST FIPS 204) signature over the envelope, hex-encoded, with mandatory `ml-dsa-65=` prefix |
 | `X-KXCO-PQ-Kid` | yes-if-PQ | 16 hex chars | First 8 bytes of SHA-256(rawPublicKeyBytes). Receivers pin and reject mismatched kid |
-| `X-KXCO-Event` | optional | string | Sender-defined event name, e.g. `invoice.paid` |
-| `X-KXCO-Delivery` | optional | string | Idempotency id / trace id for the sender's outbound system |
+| `X-KXCO-Event` | optional | string | Sender-defined event name, e.g. `invoice.paid`. Not covered by either signature |
+| `X-KXCO-Delivery` | optional | string | Idempotency id / trace id for the sender's outbound system. Not covered by either signature |
 
 \* At least one of `X-KXCO-Signature` / `X-KXCO-PQ-Signature` must be present. Receivers declare which they require via the `required` policy.
 
