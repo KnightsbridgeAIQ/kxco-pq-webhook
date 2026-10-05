@@ -5,7 +5,7 @@ export const JWS_HEADER: 'X-KXCO-JWS'
 
 export interface SignBodyJwsOptions {
   rawBody: string | Uint8Array
-  /** ML-DSA-65 secret key. */
+  /** ML-DSA-65 (4032 bytes) or ML-DSA-87 (4896 bytes) secret key. Its set is the token's `alg`. */
   secretKey: Uint8Array | Buffer
   /** Defaults to the fingerprint of `publicKey`. One of the two is required. */
   kid?: string
@@ -29,6 +29,7 @@ export function signBodyJws(opts: SignBodyJwsOptions): string
 export interface VerifyBodyJwsOptions {
   token: string
   rawBody: string | Uint8Array
+  /** ML-DSA-65 or ML-DSA-87. A token whose `alg` names the other set is refused. */
   publicKey: Uint8Array | Buffer
   /** Reject a token naming a different key. */
   pinnedKid?: string
@@ -44,6 +45,8 @@ export interface VerifyBodyJwsResult {
   reason?: string
   claims?: Record<string, unknown>
   kid?: string
+  /** The token's `alg`, 'ML-DSA-65' or 'ML-DSA-87', when valid. */
+  alg?: string
 }
 
 /** Verify a compact JWS against a body. Fails closed; never throws on bad input. */

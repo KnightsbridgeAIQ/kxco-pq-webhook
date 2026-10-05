@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.3.0
+**ML-DSA-87 signing and verification.** A signer given an ML-DSA-87 secret key
+sends `X-KXCO-PQ-Signature: ml-dsa-87=<hex>` over the same `timestamp.body`
+envelope, alone or beside the HMAC, and `signer.pqAlgorithm` names the set. A
+verifier given an ML-DSA-87 public key, singly or in `pinnedKids`, verifies that
+form and only that form: a header whose prefix names the other set, or bare hex,
+is `pq_invalid`, as is a header prefixed `ml-dsa-87=` shown to an ML-DSA-65 key. The key
+decides throughout, and the size checks accept both sets. ML-DSA-65 deliveries
+are produced and verified exactly as before, and a test verifies one signed by
+1.2.6.
+
+**The contract's `algorithm` field is read.** `createVerifier` takes the
+publisher's stated `algorithm` as `pqAlgorithm` beside `pqPublicKey`, or as
+`algorithm` on each `pinnedKids` entry, and refuses one that disagrees with the
+key. The contract now defines the `ml-dsa-87=` header and what `algorithm`
+means on the well-known document.
+
+**JWS follows the key.** `signBodyJws` signs `ML-DSA-87` with an ML-DSA-87 key,
+and `verifyBodyJws` requires the `alg` of the key it is given, so a token of the
+other set is refused. Results carry `alg`.
+
+The `kxco-post-quantum` development floor is now ^1.6.0, matching the peer.
+
 ## 1.2.6
 
 Documentation. No source change.

@@ -213,7 +213,7 @@ The signature envelope is `${timestamp}.${rawBody}`. Headers sent with every del
 |---|---|
 | `X-KXCO-Timestamp` | Unix seconds |
 | `X-KXCO-Signature` | `sha256=<64 hex chars>` HMAC-SHA256 |
-| `X-KXCO-PQ-Signature` | `ml-dsa-65=<hex>` ML-DSA-65 signature |
+| `X-KXCO-PQ-Signature` | `ml-dsa-65=<hex>` ML-DSA-65 signature, or `ml-dsa-87=<hex>` from an ML-DSA-87 key |
 | `X-KXCO-PQ-Kid` | 16 hex chars: the first 8 bytes of the SHA-256 of the public key bytes |
 | `X-KXCO-Event` | Optional event name |
 | `X-KXCO-Delivery` | Optional idempotency / trace ID |
@@ -238,6 +238,11 @@ const result = verifier.verify(req.headers, req.body)
 ```
 
 `pinnedKid` (singular) continues to work unchanged and is mutually exclusive with `pinnedKids`.
+
+Each key decides its own parameter set, so a rotation from an ML-DSA-65 key to
+an ML-DSA-87 key is the same configuration: list both. Each `pinnedKids` entry may
+carry the publisher's `algorithm` from its well-known document, and is refused
+if it disagrees with the key.
 
 ## For institutions
 
@@ -270,13 +275,17 @@ Builds a reusable signing object. At least one of `hmacSecret` or `pqSecretKey` 
 ```
 opts:
   hmacSecret   string | Buffer        // shared HMAC-SHA256 secret
-  pqSecretKey  Buffer | Uint8Array    // ML-DSA-65 secret key (4032 bytes)
+  pqSecretKey  Buffer | Uint8Array    // ML-DSA-65 (4032 bytes) or ML-DSA-87 (4896 bytes) secret key; decides the header form
   pqKid        string                 // fingerprint of the matching public key; required when pqSecretKey is set
 
 Returns:
   signer.sign(rawBody, { event?, deliveryId? }) → Record<string, string>
   signer.pqKid  string | undefined
+  signer.pqAlgorithm  'ml-dsa-65' | 'ml-dsa-87' | undefined
 ```
+
+An ML-DSA-87 key signs `X-KXCO-PQ-Signature: ml-dsa-87=<hex>` over the same
+envelope. An ML-DSA-65 key signs exactly as before.
 
 ### `createVerifier(opts)` → `Verifier`
 
@@ -285,9 +294,10 @@ Builds a reusable verifier. At least one of `hmacSecret`, `pqPublicKey`, or `pin
 ```
 opts:
   hmacSecret     string | Buffer               // shared HMAC-SHA256 secret
-  pqPublicKey    string | Buffer | Uint8Array  // ML-DSA-65 public key (1952 bytes or hex string)
+  pqPublicKey    string | Buffer | Uint8Array  // ML-DSA-65 (1952 bytes) or ML-DSA-87 (2592 bytes) public key, or hex
+  pqAlgorithm    'ml-dsa-65' | 'ml-dsa-87'     // optional: the well-known `algorithm` for pqPublicKey; refused if it disagrees
   pinnedKid      string                        // required when pqPublicKey is set
-  pinnedKids     Array<{ kid, publicKey }>     // multi-key form for rotation; mutually exclusive with pinnedKid/pqPublicKey
+  pinnedKids     Array<{ kid, publicKey, algorithm? }>  // multi-key form for rotation; mutually exclusive with pinnedKid/pqPublicKey
   windowSeconds  number                        // max clock skew in seconds (default: 300)
   required       'both' | 'pq' | 'hmac' | 'either'  // verification policy (default: 'both')
 
@@ -298,7 +308,7 @@ Returns:
 VerifyResult:
   ok            boolean   // overall verdict
   hmacOk        boolean   // HMAC check passed
-  pqOk          boolean   // ML-DSA-65 check passed
+  pqOk          boolean   // ML-DSA check passed, under the set the key belongs to
   timestampOk   boolean   // timestamp within windowSeconds
   kidOk         boolean   // kid header matched pinnedKid
   reason        string?   // when !ok: timestamp_skew | kid_mismatch | missing_hmac | missing_pq | hmac_invalid | pq_invalid
