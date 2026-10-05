@@ -24,6 +24,19 @@ export const JWS_HEADER = 'X-KXCO-JWS'
 
 const enc = new TextEncoder()
 
+// The key decides the JWS `alg`: an ML-DSA-65 key signs and verifies
+// 'ML-DSA-65', an ML-DSA-87 key 'ML-DSA-87'. A token naming the other set from
+// the verifying key is refused by the alg check, not tried.
+function jwsAlgForSecretKey(secretKey) {
+  if (secretKey?.length === 4896) return 'ML-DSA-87'
+  if (secretKey?.length === 4032) return 'ML-DSA-65'
+  return null
+}
+
+function jwsAlgForPublicKey(publicKey) {
+  return publicKey?.length === 2592 ? 'ML-DSA-87' : 'ML-DSA-65'
+}
+
 function sha256Hex(input) {
   const bytes = typeof input === 'string' ? enc.encode(input) : new Uint8Array(input)
   return createHash('sha256').update(bytes).digest('hex')
@@ -34,7 +47,7 @@ function sha256Hex(input) {
  *
  * @param {object} opts
  * @param {string|Uint8Array} opts.rawBody
- * @param {Uint8Array|Buffer} opts.secretKey — ML-DSA-65
+ * @param {Uint8Array|Buffer} opts.secretKey  ML-DSA-65 (4032 bytes) or ML-DSA-87 (4896 bytes); its set is the token's alg
  * @param {string} [opts.kid]        — defaults to the fingerprint of `publicKey`
  * @param {Uint8Array} [opts.publicKey] — used only to derive `kid` when omitted
  * @param {number} [opts.timestamp]  — unix seconds. Defaults to now.
@@ -50,6 +63,10 @@ export function signBodyJws({
     throw new TypeError('signBodyJws: rawBody is required')
   }
   if (!secretKey) throw new TypeError('signBodyJws: secretKey is required')
+  const alg = jwsAlgForSecretKey(secretKey)
+  if (alg === null) {
+    throw new TypeError('signBodyJws: secretKey must be an ML-DSA-65 (4032-byte) or ML-DSA-87 (4896-byte) secret key')
+  }
 
   const resolvedKid = kid ?? (publicKey ? fingerprint(publicKey) : undefined)
   if (!resolvedKid) {
@@ -67,7 +84,7 @@ export function signBodyJws({
   }
 
   return compactJws.signJws(claims, secretKey, {
-    alg: 'ML-DSA-65',
+    alg,
     kid: resolvedKid,
     typ: 'kxco-webhook+jws',
   })
@@ -81,11 +98,11 @@ export function signBodyJws({
  * @param {object} opts
  * @param {string} opts.token
  * @param {string|Uint8Array} opts.rawBody
- * @param {Uint8Array|Buffer} opts.publicKey
+ * @param {Uint8Array|Buffer} opts.publicKey  ML-DSA-65 or ML-DSA-87; a token whose alg names the other set is refused
  * @param {string} [opts.pinnedKid]     — reject a token naming a different key
  * @param {number} [opts.windowSeconds] — clock skew allowed on `iat`. Default 300.
  * @param {string} [opts.audience]      — require this `aud` claim
- * @returns {{ valid: boolean, reason?: string, claims?: object, kid?: string }}
+ * @returns {{ valid: boolean, reason?: string, claims?: object, kid?: string, alg?: string }}
  */
 export function verifyBodyJws({
   token, rawBody, publicKey, pinnedKid, windowSeconds = 300, audience,
@@ -100,7 +117,7 @@ export function verifyBodyJws({
   // The kid is checked before the signature so a receiver holding several keys
   // can reject a token for a key it does not serve without doing the maths.
   const result = compactJws.verifyJws(token, publicKey, {
-    alg: 'ML-DSA-65',
+    alg: jwsAlgForPublicKey(publicKey),
     ...(pinnedKid ? { kid: pinnedKid } : {}),
   })
   if (!result.valid) {
@@ -132,7 +149,7 @@ export function verifyBodyJws({
     return { valid: false, reason: 'audience_mismatch' }
   }
 
-  return { valid: true, claims, kid: result.header.kid }
+  return { valid: true, claims, kid: result.header.kid, alg: result.header.alg }
 }
 
 function constantTimeHexEquals(a, b) {

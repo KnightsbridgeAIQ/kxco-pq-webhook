@@ -19,7 +19,7 @@ ${X-KXCO-Timestamp}.${raw request body}
 | `Content-Type` | yes | `application/json` (typical) | Senders set this; receivers don't verify the value |
 | `X-KXCO-Timestamp` | yes | Decimal Unix seconds | Receivers reject when more than `windowSeconds` (default 300) skew from current time |
 | `X-KXCO-Signature` | optional* | `sha256=<64-hex-char>` | HMAC-SHA-256 over the envelope, hex-encoded, with mandatory `sha256=` prefix |
-| `X-KXCO-PQ-Signature` | optional* | `ml-dsa-65=<6618-hex-char>` | ML-DSA-65 (NIST FIPS 204) signature over the envelope, hex-encoded, with mandatory `ml-dsa-65=` prefix |
+| `X-KXCO-PQ-Signature` | optional* | `ml-dsa-65=<6618-hex-char>` or `ml-dsa-87=<9254-hex-char>` | ML-DSA (NIST FIPS 204) signature over the envelope, hex-encoded, with a mandatory prefix naming the parameter set: `ml-dsa-65=` for an ML-DSA-65 key, `ml-dsa-87=` for an ML-DSA-87 key. The signing key decides which |
 | `X-KXCO-PQ-Kid` | yes-if-PQ | 16 hex chars | First 8 bytes of SHA-256(rawPublicKeyBytes). Receivers pin and reject mismatched kid |
 | `X-KXCO-Event` | optional | string | Sender-defined event name, e.g. `invoice.paid` |
 | `X-KXCO-Delivery` | optional | string | Idempotency id / trace id for the sender's outbound system |
@@ -33,7 +33,7 @@ The `createVerifier({ required })` option determines what counts as verified:
 | `required` | Verdict `ok = true` requires |
 |---|---|
 | `'hmac'` | Valid HMAC signature only. Receivers that don't yet hold a PQ public key for the sender. |
-| `'pq'` | Valid ML-DSA-65 signature only. Receivers that want non-repudiation and don't share a symmetric secret with the sender. |
+| `'pq'` | Valid ML-DSA signature only. Receivers that want non-repudiation and don't share a symmetric secret with the sender. |
 | `'both'` | Both signatures valid. **Default. Recommended for institutional integrations.** |
 | `'either'` | Defense in depth — either signature passing is enough. Useful during a migration window from HMAC-only to dual-signed. |
 
@@ -52,7 +52,7 @@ When `ok: false`, the `reason` field carries one of:
 | `missing_hmac` | Policy requires HMAC but no `X-KXCO-Signature` header was sent |
 | `missing_pq` | Policy requires PQ but no `X-KXCO-PQ-Signature` header was sent |
 | `hmac_invalid` | HMAC signature failed verification |
-| `pq_invalid` | ML-DSA-65 signature failed verification |
+| `pq_invalid` | ML-DSA signature failed verification, including a header whose prefix names the other parameter set from the receiver's key |
 
 ## Re-implementing the receiver in another language
 
@@ -64,9 +64,14 @@ HMAC verification:
   given    = hex_decode(strip_prefix("sha256=", X-KXCO-Signature))
   return constant_time_equal(expected, given)
 
-PQ verification:
+PQ verification, ML-DSA-65 key (1952 bytes):
   given   = hex_decode(strip_prefix("ml-dsa-65=", X-KXCO-PQ-Signature))
   return ML_DSA_65_VERIFY(pubKey, bytes(`${timestamp}.${rawBody}`), given)
+
+PQ verification, ML-DSA-87 key (2592 bytes):
+  if not X-KXCO-PQ-Signature starts with "ml-dsa-87=": return false
+  given   = hex_decode(strip_prefix("ml-dsa-87=", X-KXCO-PQ-Signature))
+  return ML_DSA_87_VERIFY(pubKey, bytes(`${timestamp}.${rawBody}`), given)
 
 kid:
   return hex(SHA256(pubKey)[:8]) == X-KXCO-PQ-Kid
@@ -158,6 +163,8 @@ The document is JSON. Two shapes are valid, and a receiver SHOULD accept either:
 ```
 
 The top-level `kid` and `publicKey` fields **always** describe the currently-active key — this preserves the legacy shape so receivers that ignore `keys[]` still work. The `keys[]` array is exhaustive for the publisher's history.
+
+`algorithm` names the parameter set of the key it describes: `"ml-dsa-65"` or `"ml-dsa-87"`. The top-level `algorithm` describes the active key. Each `keys[]` entry MAY carry its own `algorithm`, and does when a rotation changed the parameter set. Without one, the entry is described by its key's length. The key is the authority: a receiver passes the stated `algorithm` to `createVerifier` (`pqAlgorithm` beside `pqPublicKey`, or `algorithm` on each `pinnedKids` entry), and a value that disagrees with the key's length, or names neither set, is refused when the verifier is built.
 
 ### `keys[].status` values
 
