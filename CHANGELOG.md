@@ -1,7 +1,6 @@
 # Changelog
 
-## Unreleased
-
+## 1.3.0
 **ML-DSA-87 signing and verification.** A signer given an ML-DSA-87 secret key
 sends `X-KXCO-PQ-Signature: ml-dsa-87=<hex>` over the same `timestamp.body`
 envelope, alone or beside the HMAC, and `signer.pqAlgorithm` names the set. A
