@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1
+
+Documentation. No source change.
+
+The package description, the opening of the README and the keywords now say
+what 1.3.0 already does: a delivery is signed and verified with ML-DSA-87 as
+well as ML-DSA-65, beside the HMAC, and the compact JWS carries either. The
+description now fits the 255 characters the npm registry keeps, so it no
+longer ends mid-sentence. `ml-dsa-87` joins the keywords.
+
 ## 1.3.0
 **ML-DSA-87 signing and verification.** A signer given an ML-DSA-87 secret key
 sends `X-KXCO-PQ-Signature: ml-dsa-87=<hex>` over the same `timestamp.body`

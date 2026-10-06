@@ -1,6 +1,6 @@
 # kxco-post-quantum-webhook
 
-**Dual-signed webhooks: HMAC-SHA256 and post-quantum ML-DSA-65 over the same bytes, so a receiver can prove who sent each delivery.**
+**Dual-signed webhooks: HMAC-SHA256 and post-quantum ML-DSA-87 or ML-DSA-65 over the same bytes, so a receiver can prove who sent each delivery.**
 
 [![npm](https://img.shields.io/npm/v/kxco-post-quantum-webhook?label=npm&color=b0964f)](https://www.npmjs.com/package/kxco-post-quantum-webhook)
 [![downloads](https://img.shields.io/npm/dm/kxco-post-quantum-webhook?label=downloads&color=b0964f)](https://www.npmjs.com/package/kxco-post-quantum-webhook)
@@ -10,14 +10,14 @@
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 [![node](https://img.shields.io/node/v/kxco-post-quantum-webhook.svg)](https://nodejs.org)
 
-Post-quantum ML-DSA-65 webhook signing and verification. Sign outgoing webhook payloads so recipients can prove they came from you. Verify incoming webhooks before processing them. Drop-in replacement for HMAC-SHA256 webhook patterns, signed with a NIST-standardised post-quantum algorithm. An optional compact-JWS path is available for receivers whose stack already speaks JWS.
+Post-quantum ML-DSA-87 and ML-DSA-65 webhook signing and verification. Sign outgoing webhook payloads so recipients can prove they came from you. Verify incoming webhooks before processing them. Drop-in replacement for HMAC-SHA256 webhook patterns, signed with a NIST-standardised post-quantum algorithm. An optional compact-JWS path is available for receivers whose stack already speaks JWS.
 
-- **Two signatures over the same bytes.** A dual-signed delivery carries HMAC-SHA256 and ML-DSA-65, both over `${timestamp}.${rawBody}`, so a receiver checking either one is checking the same message.
-- **Proof of origin a shared secret cannot give.** Only the sender holds the ML-DSA-65 private key, so a receiver can prove to a third party that a delivery came from you, even if the HMAC secret has leaked.
+- **Two signatures over the same bytes.** A dual-signed delivery carries HMAC-SHA256 and ML-DSA-87 or ML-DSA-65, both over `${timestamp}.${rawBody}`, so a receiver checking either one is checking the same message.
+- **Proof of origin a shared secret cannot give.** Only the sender holds the ML-DSA private key, so a receiver can prove to a third party that a delivery came from you, even if the HMAC secret has leaked.
 - **Migrate with no flag day.** `required: 'either'` accepts HMAC-only and dual-signed deliveries side by side, and a single setting then tightens it to `'both'` or `'pq'`.
 - **Rotate keys without dropping a delivery.** `pinnedKids` accepts several keys at once and `resolvedKid` names the one that verified, so deliveries signed by the retiring key keep verifying through the drain window.
 - **A few lines in the framework you run.** Adapters for Express, Fastify, Hono, Cloudflare Workers and Vercel verify on the route and answer a failed signature with a 401 and its reason.
-- **A wire format anyone can implement.** The [webhook contract](./docs/webhook-contract.md) is language-neutral, and an optional compact JWS uses the RFC 9964 `alg` name `ML-DSA-65` for receivers whose stack already speaks JWS.
+- **A wire format anyone can implement.** The [webhook contract](./docs/webhook-contract.md) is language-neutral, and an optional compact JWS uses the RFC 9964 `alg` names `ML-DSA-87` and `ML-DSA-65` for receivers whose stack already speaks JWS.
 - **Proven underneath.** 1,793 NIST ACVP vectors passed, 0 failed, and 225 interoperability checks against liboqs, Bouncy Castle and the Python reference implementations, 0 failed, in [`kxco-post-quantum`](https://github.com/KnightsbridgeAIQ/kxco-post-quantum/blob/main/CONFORMANCE.md).
 
 **The migration has dates.**
@@ -38,7 +38,7 @@ HMAC-SHA256 is a shared secret: the sender and receiver both hold the key, so ei
 - You are sending webhooks to customers who need to prove, to a third party, that a specific event was delivered by your platform and not fabricated by them.
 - You are replacing HMAC-SHA256 webhook patterns with something that holds up against quantum computers.
 
-This package sends both HMAC-SHA256 and ML-DSA-65 signatures by default. Receivers can require either or both. During migration from HMAC-only setups, the `required: 'either'` policy lets receivers accept both old and new deliveries.
+This package sends both HMAC-SHA256 and ML-DSA signatures by default. Receivers can require either or both. During migration from HMAC-only setups, the `required: 'either'` policy lets receivers accept both old and new deliveries.
 
 ## Install
 
@@ -198,8 +198,8 @@ On Vercel, run the route on the Node.js runtime and use this adapter.
 
 | `required` | Passes when |
 |---|---|
-| `'both'` | Both HMAC and ML-DSA-65 signatures are valid. The default, and the one for production |
-| `'pq'` | ML-DSA-65 signature is valid |
+| `'both'` | Both HMAC and ML-DSA signatures are valid. The default, and the one for production |
+| `'pq'` | ML-DSA signature is valid |
 | `'hmac'` | HMAC-SHA256 signature is valid |
 | `'either'` | Either signature passes, for migration from HMAC-only |
 
@@ -426,7 +426,7 @@ const result = verifyBodyJws({
 if (!result.valid) return reject(result.reason)
 ```
 
-The token uses the RFC 9964 `alg` name `ML-DSA-65`, so a JWS library that knows the registration can identify it.
+The token uses the RFC 9964 `alg` name for its key's set, `ML-DSA-87` or `ML-DSA-65`, so a JWS library that knows the registration can identify it.
 
 **The payload is detached.** The claims carry `body_sha256`, not the body. Duplicating a webhook body into a header would double the bytes on the wire and give a lazy verifier two copies to disagree about. The digest binds the signature to exactly one body and to nothing else.
 
@@ -477,7 +477,7 @@ package reaches you on the next install, with no release of this package.
 
 ## Security
 
-**ML-DSA-65** (NIST FIPS 204) and HMAC-SHA256, both from [`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum), with ML-DSA-65 running on the OpenSSL 3.5 primitives where the runtime provides them. No custom cryptography.
+**ML-DSA-87**, **ML-DSA-65** (NIST FIPS 204) and HMAC-SHA256, all from [`kxco-post-quantum`](https://www.npmjs.com/package/kxco-post-quantum), with ML-DSA running on the OpenSSL 3.5 primitives where the runtime provides them. No custom cryptography.
 
 Evidenced, and reproducible on your own machine:
 
