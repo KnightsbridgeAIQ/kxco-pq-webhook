@@ -19,7 +19,7 @@
  */
 
 /**
- * POST a body to a URL with hybrid HMAC + ML-DSA-65 signing headers attached.
+ * POST a body to a URL with hybrid HMAC + ML-DSA signing headers attached.
  * Returns the Response object — does NOT throw on non-2xx; treat like
  * a normal fetch.
  *

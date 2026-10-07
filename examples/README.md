@@ -1,6 +1,6 @@
 # Examples
 
-Drop-in webhook receiver templates verifying KXCO hybrid HMAC + ML-DSA-65 signatures across common platforms. Every example is **copy-paste runnable** with two environment variables.
+Drop-in webhook receiver templates verifying KXCO hybrid HMAC + ML-DSA signatures across common platforms. Every example is **copy-paste runnable** with two environment variables.
 
 ## Reference receivers (Phase 2 — webhook verification)
 

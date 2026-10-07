@@ -46,6 +46,21 @@ test('an ML-DSA-87 signer with an HMAC secret signs both, and required both pass
   assert.deepEqual([r.ok, r.hmacOk, r.pqOk], [true, true, true])
 })
 
+test('with an HMAC secret, ML-DSA-87 and ML-DSA-65 signers send the same headers, and the HMAC verifies on its own', () => {
+  // The two sets take different paths through createSigner, and neither may
+  // drop the HMAC co-signature or any other header the other sends.
+  const opts = { event: 'payment.settled', deliveryId: 'd-parity' }
+  const h87 = createSigner({ hmacSecret: HMAC, pqSecretKey: K87.secretKey, pqKid: KID87 }).sign(BODY, opts)
+  const h65 = createSigner({ hmacSecret: HMAC, pqSecretKey: K65.secretKey, pqKid: KID65 }).sign(BODY, opts)
+  assert.deepEqual(Object.keys(h87), Object.keys(h65))
+  for (const headers of [h87, h65]) {
+    const ts = headers['X-KXCO-Timestamp']
+    assert.equal(headers['X-KXCO-Signature'], 'sha256=' + webhook.hmacHex(HMAC, ts, BODY))
+    const r = createVerifier({ hmacSecret: HMAC, required: 'hmac' }).verify(headers, BODY)
+    assert.deepEqual([r.ok, r.hmacOk], [true, true])
+  }
+})
+
 test('an ML-DSA-65 signer still emits ml-dsa-65=<hex> through the upstream helpers', () => {
   const signer = createSigner({ hmacSecret: HMAC, pqSecretKey: K65.secretKey, pqKid: KID65 })
   assert.equal(signer.pqAlgorithm, 'ml-dsa-65')

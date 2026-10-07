@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.2 (2026-10-07)
+
+Documentation and comments. No behaviour change.
+
+The quick start and `examples/sender.js` generate an ML-DSA-87 key, with
+`mlDsa87.keypairFromMaster` under its own label, so a sender who follows them
+signs `ml-dsa-87=`. The README, ASSESSMENT.md and the comments in
+`src/client.js` and `src/index.js` lead with ML-DSA-87 and no longer describe
+the PQ signature as ML-DSA-65 only.
+
+The signer already treated both sets the same: an ML-DSA-87 key with an HMAC
+secret sends the same headers an ML-DSA-65 key does, HMAC included. A test now pins that, so
+neither set can drop the HMAC co-signature unnoticed.
+
+To keep the old behaviour, keep signing with your ML-DSA-65 key. The key
+decides the header form, and an ML-DSA-65 key still signs `ml-dsa-65=` exactly
+as before.
+
 ## 1.3.1
 
 Documentation. No source change.
