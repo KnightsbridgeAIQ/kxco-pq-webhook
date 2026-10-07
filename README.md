@@ -32,7 +32,7 @@ Post-quantum ML-DSA-87 and ML-DSA-65 webhook signing and verification. Sign outg
 
 Use this package when you need proof that a webhook delivery came from a specific sender, as well as proof that the payload arrived unchanged.
 
-HMAC-SHA256 is a shared secret: the sender and receiver both hold the key, so either party could have produced the signature. ML-DSA-65 is an asymmetric signature scheme: only the sender holds the private key, and anyone holding the corresponding public key can verify. That property is called non-repudiation, and it matters when:
+HMAC-SHA256 is a shared secret: the sender and receiver both hold the key, so either party could have produced the signature. ML-DSA is an asymmetric signature scheme: only the sender holds the private key, and anyone holding the corresponding public key can verify. That property is called non-repudiation, and it matters when:
 
 - You are receiving webhooks from a partner and need to be certain they originated from that partner's infrastructure, not a replay or a man-in-the-middle.
 - You are sending webhooks to customers who need to prove, to a third party, that a specific event was delivered by your platform and not fabricated by them.
@@ -53,10 +53,10 @@ npm install kxco-post-quantum-webhook kxco-post-quantum
 ### Sign an outgoing webhook
 
 ```js
-import { mlDsa, fingerprint }                from 'kxco-post-quantum'
+import { mlDsa87, fingerprint }              from 'kxco-post-quantum'
 import { createSigner, signedFetch }         from 'kxco-post-quantum-webhook'
 
-const kp     = mlDsa.keypairFromMaster(process.env.KEY_MASTER, 'my-app-v1')
+const kp     = mlDsa87.keypairFromMaster(process.env.KEY_MASTER, 'my-app-87-v1')
 const kid    = fingerprint(kp.publicKey)
 
 const signer = createSigner({
@@ -213,7 +213,7 @@ The signature envelope is `${timestamp}.${rawBody}`. Headers sent with every del
 |---|---|
 | `X-KXCO-Timestamp` | Unix seconds |
 | `X-KXCO-Signature` | `sha256=<64 hex chars>` HMAC-SHA256 |
-| `X-KXCO-PQ-Signature` | `ml-dsa-65=<hex>` ML-DSA-65 signature, or `ml-dsa-87=<hex>` from an ML-DSA-87 key |
+| `X-KXCO-PQ-Signature` | `ml-dsa-87=<hex>` from an ML-DSA-87 key, or `ml-dsa-65=<hex>` from an ML-DSA-65 key |
 | `X-KXCO-PQ-Kid` | 16 hex chars: the first 8 bytes of the SHA-256 of the public key bytes |
 | `X-KXCO-Event` | Optional event name |
 | `X-KXCO-Delivery` | Optional idempotency / trace ID |
@@ -275,13 +275,13 @@ Builds a reusable signing object. At least one of `hmacSecret` or `pqSecretKey` 
 ```
 opts:
   hmacSecret   string | Buffer        // shared HMAC-SHA256 secret
-  pqSecretKey  Buffer | Uint8Array    // ML-DSA-65 (4032 bytes) or ML-DSA-87 (4896 bytes) secret key; decides the header form
+  pqSecretKey  Buffer | Uint8Array    // ML-DSA-87 (4896 bytes) or ML-DSA-65 (4032 bytes) secret key; decides the header form
   pqKid        string                 // fingerprint of the matching public key; required when pqSecretKey is set
 
 Returns:
   signer.sign(rawBody, { event?, deliveryId? }) → Record<string, string>
   signer.pqKid  string | undefined
-  signer.pqAlgorithm  'ml-dsa-65' | 'ml-dsa-87' | undefined
+  signer.pqAlgorithm  'ml-dsa-87' | 'ml-dsa-65' | undefined
 ```
 
 An ML-DSA-87 key signs `X-KXCO-PQ-Signature: ml-dsa-87=<hex>` over the same
@@ -294,8 +294,8 @@ Builds a reusable verifier. At least one of `hmacSecret`, `pqPublicKey`, or `pin
 ```
 opts:
   hmacSecret     string | Buffer               // shared HMAC-SHA256 secret
-  pqPublicKey    string | Buffer | Uint8Array  // ML-DSA-65 (1952 bytes) or ML-DSA-87 (2592 bytes) public key, or hex
-  pqAlgorithm    'ml-dsa-65' | 'ml-dsa-87'     // optional: the well-known `algorithm` for pqPublicKey; refused if it disagrees
+  pqPublicKey    string | Buffer | Uint8Array  // ML-DSA-87 (2592 bytes) or ML-DSA-65 (1952 bytes) public key, or hex
+  pqAlgorithm    'ml-dsa-87' | 'ml-dsa-65'     // optional: the well-known `algorithm` for pqPublicKey; refused if it disagrees
   pinnedKid      string                        // required when pqPublicKey is set
   pinnedKids     Array<{ kid, publicKey, algorithm? }>  // multi-key form for rotation; mutually exclusive with pinnedKid/pqPublicKey
   windowSeconds  number                        // max clock skew in seconds (default: 300)

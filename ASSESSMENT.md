@@ -11,11 +11,11 @@ and publishes the lot. Cited here, proven there.
 ## What this package is
 
 Webhook signing and verification with two signatures over identical bytes:
-HMAC-SHA-256 and ML-DSA-65, both covering `${timestamp}.${rawBody}`.
+HMAC-SHA-256 and ML-DSA-87 or ML-DSA-65, both covering `${timestamp}.${rawBody}`.
 
 **Two signatures, two different guarantees.** HMAC is symmetric and
 post-quantum secure as a MAC, so a receiver who shares the secret verifies with
-no library at all. ML-DSA-65 adds non-repudiation: a receiver verifying only the
+no library at all. ML-DSA adds non-repudiation: a receiver verifying only the
 post-quantum signature can prove the delivery came from the holder of the
 private key **even if the HMAC secret has leaked**. Shared-secret webhook
 signing cannot make that statement, because either party could have produced the
@@ -78,10 +78,10 @@ synchronous and offline; live key status is available where a caller wants it.
 `kxco-post-quantum`.
 
 **The algorithm is named on the wire.** `X-KXCO-PQ-Signature` carries an
-`ml-dsa-65=` prefix, so a delivery states its algorithm and a second one is
-introducible distinguishably. Alongside `required: 'either'` and `pinnedKids`,
-this package has a working transition mechanism for all three of the things that
-change: the algorithm, the key and the policy.
+`ml-dsa-87=` or `ml-dsa-65=` prefix, so a delivery states its algorithm and
+another one is introducible distinguishably. Alongside `required: 'either'`
+and `pinnedKids`, this package has a working transition mechanism for all three
+of the things that change: the algorithm, the key and the policy.
 
 ## Running it
 
@@ -99,7 +99,7 @@ Correcting that entry returns publishing to CI and the attestation with it.
 
 **Supported versions.** One line moving forward. Fixes land in the next release.
 
-**Cost.** One ML-DSA-65 verification per delivery: sub-millisecond on the
+**Cost.** One ML-DSA verification per delivery: sub-millisecond on the
 OpenSSL backend, a few milliseconds in JavaScript, with the figures in the
 primitives package's `BENCHMARKS.md`. Node 24 and later run the OpenSSL backend.
 

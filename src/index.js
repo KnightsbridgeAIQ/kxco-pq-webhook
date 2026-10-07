@@ -2,12 +2,12 @@
 //
 // What this package adds on top of `kxco-post-quantum`:
 //
-//   - createSigner(opts)   — opinionated builder for outbound webhook signers
-//   - createVerifier(opts) — opinionated builder for inbound webhook verifiers,
-//                            with a `required` policy (hmac / pq / both / either)
-//                            and structured failure reasons
-//   - signedFetch(url, opts) — POST a body with HMAC + ML-DSA-65 headers
-//                              attached, in one call
+//   - createSigner(opts):   opinionated builder for outbound webhook signers
+//   - createVerifier(opts): opinionated builder for inbound webhook verifiers,
+//                           with a `required` policy (hmac / pq / both / either)
+//                           and structured failure reasons
+//   - signedFetch(url, opts): POST a body with HMAC + ML-DSA headers
+//                             attached, in one call
 //
 //   - Framework adapters (separately importable):
 //       ./express   — Express middleware

@@ -19,7 +19,7 @@ const verifier = createVerifier({
   pqPublicKey:  process.env.KXCO_PQ_PUBLIC_KEY_HEX,      // 3904 hex chars
   pinnedKid:    process.env.KXCO_PQ_KID,                 // e.g. 'aa29f37ab7f4b2cf'
   windowSeconds: 300,                                    // reject deliveries older than 5 min
-  required:      'both',                                 // demand both HMAC + ML-DSA-65
+  required:      'both',                                 // demand both HMAC + ML-DSA
 })
 
 const app = express()
