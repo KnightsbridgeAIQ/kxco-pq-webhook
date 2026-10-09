@@ -57,10 +57,16 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
 
-      - name: Setup Node 22 with npm registry
+      - name: Setup Node 26 with npm registry
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '22'
+          # Node 26 because its bundled npm (11.20 on 26.11) already carries
+          # Trusted Publishing's OIDC support, which arrived in npm 11.5.1. On
+          # Node 22 the bundled npm is older and had to be replaced with
+          # `npm install -g npm@11`, a download OpenSSF Scorecard can never count
+          # as pinned. Using the npm the runtime ships removes that download.
+          # kxco-post-quantum publishes this way with provenance.
+          node-version: '26'
           # NO registry-url. It writes an .npmrc holding
           #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
           # and points NPM_CONFIG_USERCONFIG at it. There is no NODE_AUTH_TOKEN
@@ -71,17 +77,6 @@ jobs:
           # it to the Trusted Publisher binding. That is why this was "fixed"
           # repeatedly without ever changing. Removing this makes npm report the
           # honest ENEEDAUTH instead. registry.npmjs.org is the default anyway.
-
-      - name: Upgrade npm CLI to the 11.x line
-        # Trusted Publishing's OIDC integration arrived in npm 11.5.1 and the npm
-        # bundled with Node 20 is 10.x, so this job could never authenticate that
-        # way no matter what is configured on the npm side. Node 22 plus npm 11
-        # matches the eleven sibling repos and the one package that publishes
-        # successfully today.
-        #
-        # Pinned to the 11.x line, never @latest: npm 12 requires
-        # Node ^22.22 || ^24.15 || >=26 and broke this exact step once already.
-        run: npm install -g npm@11
 
       - name: Install dependencies
         run: npm ci
