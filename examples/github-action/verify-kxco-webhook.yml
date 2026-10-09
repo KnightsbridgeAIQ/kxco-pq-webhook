@@ -31,7 +31,7 @@ jobs:
       KXCO_WEBHOOK_SECRET: ${{ secrets.KXCO_WEBHOOK_SECRET }}
     steps:
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '26' }
 
       - name: Install verifier
         run: npm install kxco-post-quantum

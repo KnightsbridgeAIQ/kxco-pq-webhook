@@ -1,6 +1,6 @@
 {
   "name": "kxco-post-quantum-webhook",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Post-quantum webhooks: HMAC-SHA256 plus ML-DSA-87 or ML-DSA-65 over the same bytes, so a receiver can prove who sent each delivery. Express, Fastify, Hono, Cloudflare Workers and Vercel adapters, key rotation with a drain window and optional compact JWS.",
   "keywords": [
     "post-quantum",
@@ -114,7 +114,7 @@
     "ASSESSMENT.md"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.12"
   },
   "peerDependencies": {
     "kxco-post-quantum": "^1.6.0"

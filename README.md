@@ -393,7 +393,7 @@ Mount response-signing middleware on routes that return a complete body, and kee
 
 ## Compatibility
 
-- Node.js 20.19 and later, matching the `engines` field
+- Node.js 22.12 and later, matching the `engines` field
 - Cloudflare Workers with the `nodejs_compat` flag, Deno and Bun, which supply Node's `crypto` and `Buffer`
 - Vercel on the Node.js runtime, through the Vercel adapter
 - Browsers through a bundler that supplies Node's `crypto` and `Buffer`, with the Express and Fastify adapters on the server
