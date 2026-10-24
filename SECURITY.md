@@ -40,7 +40,7 @@ extortion, data sale, or public disclosure ahead of the window above.
 ## Out-of-scope
 
 - Vulnerabilities in `kxco-post-quantum`, `@noble/post-quantum`, or any framework dependency — report those upstream.
-- Side-channel attacks on the underlying ML-DSA-65 primitive (these are out of our control; we use audited noble bindings).
+- Side-channel attacks on the underlying ML-DSA-87 and ML-DSA-65 primitives (these are out of our control; we use audited noble bindings).
 - The known upstream issue documented in [CHANGELOG.md](./CHANGELOG.md) (`signDelivery` calls `pqSign` even when no pqSecretKey is configured) — we work around it; upstream patch tracked separately.
 - Misconfiguration where the receiver fails to install raw-body capture (e.g. forgets `express.raw()`) — that's a documentation / setup issue, not a library vulnerability.
 
