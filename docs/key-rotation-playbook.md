@@ -1,6 +1,6 @@
 # Key Rotation Playbook
 
-How to rotate an ML-DSA-65 signing key under the [webhook contract](./webhook-contract.md) without dropping deliveries or breaking receivers.
+How to rotate an ML-DSA-87 or ML-DSA-65 signing key under the [webhook contract](./webhook-contract.md) without dropping deliveries or breaking receivers.
 
 This playbook covers two scenarios. They share the same artefact set but differ on timing and trust:
 
