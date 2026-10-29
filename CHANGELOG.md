@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1 (2026-10-29)
+
+Dependencies. No source file changed and the API is the same.
+
+- `kxco-post-quantum` peer dependency floor moves from `^1.6.0` to `^1.13.0`, the current release.
+- `kxco-post-quantum` development dependency floor moves from `^1.7.8` to `^1.13.0`.
+- Development lockfile: fast-uri 4.2.2 to 4.2.3, and the copy under ajv 3.1.8 to 3.1.9 (GHSA-333x-w4r6-6crp, GHSA-wjr9-j795-jxcr, GHSA-xhq7-xmqj-769h and GHSA-w74x-v6f9-j3xg). Both are reached only through fastify in the tests and are not shipped.
+
 ## 1.4.0 (2026-10-09)
 
 Runtime support. No change to the API or its behaviour.
