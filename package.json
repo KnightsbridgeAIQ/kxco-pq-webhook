@@ -120,7 +120,7 @@
     "kxco-post-quantum": "^1.13.0"
   },
   "devDependencies": {
-    "fast-check": "4.10.2",
+    "fast-check": "4.10.3",
     "fastify": "^5.0.0",
     "kxco-post-quantum": "^1.13.0"
   },
